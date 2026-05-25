@@ -47,7 +47,7 @@ def parse_dxf(filepath: str) -> dict:
     }
 
     # ============================================================
-    # 1. 墙体 (BS-墙) - LINE 实体
+    # 1. 墙体 (BS-墙) - LINE + LWPOLYLINE 实体
     # ============================================================
     for e in msp.query("LINE"):
         if e.dxf.layer == "BS-墙":
@@ -61,6 +61,23 @@ def parse_dxf(filepath: str) -> dict:
                 "end": [round(end.x, 1), round(end.y, 1)],
                 "length": round(length, 1),
             })
+    # LWPOLYLINE（闭合矩形墙体）
+    for e in msp.query("LWPOLYLINE"):
+        if e.dxf.layer == "BS-墙":
+            pts = [(round(p[0], 1), round(p[1], 1)) for p in e.get_points(format="xy")]
+            for k in range(len(pts)):
+                s = pts[k]
+                end = pts[(k + 1) % len(pts)]
+                length = math.sqrt((s[0]-end[0])**2 + (s[1]-end[1])**2)
+                if length > 0:
+                    result["walls"].append({
+                        "type": "wall",
+                        "layer": "BS-墙",
+                        "demolishable": True,
+                        "start": list(s),
+                        "end": list(end),
+                        "length": round(length, 1),
+                    })
 
     # ============================================================
     # 2. 窗户 (BS-窗) - INSERT 块引用
@@ -106,16 +123,11 @@ def parse_dxf(filepath: str) -> dict:
                 "door_width": None,
                 "annotations": [],
             })
-    # 承重墙线段 (BS-柱)
-    col_lines = []
+    # 承重墙线段 (BS-柱) - LINE + LWPOLYLINE
     for e in msp.query("LINE"):
         if e.dxf.layer == "BS-柱":
             s, end = e.dxf.start, e.dxf.end
             length = math.sqrt((s.x - end.x)**2 + (s.y - end.y)**2)
-            col_lines.append({
-                "start": (round(s.x, 1), round(s.y, 1)),
-                "end": (round(end.x, 1), round(end.y, 1)),
-            })
             result["walls"].append({
                 "type": "wall",
                 "layer": "BS-柱",
@@ -128,17 +140,19 @@ def parse_dxf(filepath: str) -> dict:
     for e in msp.query("LWPOLYLINE"):
         if e.dxf.layer == "BS-柱":
             pts = [(round(p[0], 1), round(p[1], 1)) for p in e.get_points(format="xy")]
-            for i in range(len(pts) - 1):
-                s, end = pts[i], pts[i+1]
+            for k in range(len(pts)):
+                s = pts[k]
+                end = pts[(k + 1) % len(pts)]
                 length = math.sqrt((s[0]-end[0])**2 + (s[1]-end[1])**2)
-                result["walls"].append({
-                    "type": "wall",
-                    "layer": "BS-柱",
-                    "demolishable": False,
-                    "start": list(s),
-                    "end": list(end),
-                    "length": round(length, 1),
-                })
+                if length > 0:
+                    result["walls"].append({
+                        "type": "wall",
+                        "layer": "BS-柱",
+                        "demolishable": False,
+                        "start": list(s),
+                        "end": list(end),
+                        "length": round(length, 1),
+                    })
 
     # 门框 LWPOLYLINE (FF-门)
     door_polys = []
