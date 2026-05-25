@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-JSON → Blender 3D 白模（v3）
-回到第一版：闭合多边形检测 + 统一墙厚拉伸
+JSON → Blender 3D 白模（v4）
+平行线对生成墙体：每条线找最近的平行伙伴，一对一配对，不重复。
 """
 
 import bpy
@@ -9,7 +9,6 @@ import bmesh
 import json
 import sys
 import math
-from collections import defaultdict
 
 
 def load_json(filepath):
@@ -17,72 +16,108 @@ def load_json(filepath):
         return json.load(f)
 
 
-def find_closed_polygons(walls):
-    """从墙线段中找闭合多边形"""
-    TOL = 10.0
+def find_wall_pairs(walls, max_dist=350, min_length=100):
+    """一对一配对平行线，每条线只用一次"""
+    n = len(walls)
+    # 计算所有线的角度和长度
+    info = []
+    for w in walls:
+        dx = w["end"][0] - w["start"][0]
+        dy = w["end"][1] - w["start"][1]
+        ln = math.sqrt(dx**2 + dy**2)
+        angle = math.atan2(dy, dx) if ln > 0 else 0
+        info.append({"dx": dx, "dy": dy, "len": ln, "angle": angle})
 
-    def key(x, y):
-        return (round(x / TOL) * TOL, round(y / TOL) * TOL)
-
-    adj = defaultdict(list)
-    edges = []
-    for i, w in enumerate(walls):
-        sk = key(w["start"][0], w["start"][1])
-        ek = key(w["end"][0], w["end"][1])
-        adj[sk].append((ek, i))
-        adj[ek].append((sk, i))
-        edges.append((sk, ek, i))
-
-    used_global = set()
-    polygons = []
-
-    def find_cycle(start, cur, path, used):
-        if len(path) > 2 and cur == start:
-            return path[:]
-        for nxt, eidx in adj[cur]:
-            if eidx in used:
-                continue
-            if nxt == start and len(path) > 2:
-                return path + [nxt]
-            used.add(eidx)
-            result = find_cycle(start, nxt, path + [nxt], used)
-            if result:
-                return result
-            used.discard(eidx)
-        return None
-
-    for sk, ek, eidx in edges:
-        if eidx in used_global:
+    # 找所有候选配对
+    candidates = []
+    for i in range(n):
+        if info[i]["len"] < min_length:
             continue
-        used_global.add(eidx)
-        cycle = find_cycle(sk, ek, [sk, ek], {eidx})
-        if cycle:
-            for k in range(len(cycle) - 1):
-                for _, ei in adj[cycle[k]]:
-                    if ei not in used_global:
-                        for _, ei2 in adj[cycle[k+1]]:
-                            if ei == ei2:
-                                used_global.add(ei)
-            polygons.append(cycle)
-    return polygons
+        for j in range(i+1, n):
+            if info[j]["len"] < min_length:
+                continue
+            # 检查平行
+            diff = abs(info[i]["angle"] - info[j]["angle"]) % math.pi
+            if diff > 0.15 and diff < math.pi - 0.15:
+                continue
+            # 计算距离
+            mx = (walls[i]["start"][0] + walls[i]["end"][0]) / 2
+            my = (walls[i]["start"][1] + walls[i]["end"][1]) / 2
+            px = mx - walls[j]["start"][0]
+            py = my - walls[j]["start"][1]
+            dx2 = info[j]["dx"]
+            dy2 = info[j]["dy"]
+            ln2 = info[j]["len"]
+            dist = abs(py * dx2 - px * dy2) / ln2
+            if 50 < dist < max_dist:
+                candidates.append((dist, i, j))
+
+    # 按距离排序，贪心配对
+    candidates.sort()
+    used = set()
+    pairs = []
+    for dist, i, j in candidates:
+        if i in used or j in used:
+            continue
+        pairs.append((i, j, round(dist)))
+        used.add(i)
+        used.add(j)
+
+    return pairs, used
 
 
-def create_extruded_polygon(polygon_keys, thickness, height, name, mat):
-    """从闭合多边形拉伸成墙体"""
-    pts = [(k[0], k[1]) for k in polygon_keys]
-    n = len(pts)
-    if n < 3:
-        return None
+def create_wall_from_pair(wa, wb, height, name, mat):
+    """从两条平行线创建墙体"""
+    a1, a2 = wa["start"], wa["end"]
+    b1, b2 = wb["start"], wb["end"]
+
+    # 对齐端点
+    d11 = (a1[0]-b1[0])**2 + (a1[1]-b1[1])**2
+    d12 = (a1[0]-b2[0])**2 + (a1[1]-b2[1])**2
+    if d12 < d11:
+        b1, b2 = b2, b1
 
     bm = bmesh.new()
-    vb = [bm.verts.new((x, y, 0)) for x, y in pts]
-    vt = [bm.verts.new((x, y, height)) for x, y in pts]
+    vb = [bm.verts.new((a1[0],a1[1],0)), bm.verts.new((b1[0],b1[1],0)),
+          bm.verts.new((b2[0],b2[1],0)), bm.verts.new((a2[0],a2[1],0))]
+    vt = [bm.verts.new((a1[0],a1[1],height)), bm.verts.new((b1[0],b1[1],height)),
+          bm.verts.new((b2[0],b2[1],height)), bm.verts.new((a2[0],a2[1],height))]
     bm.verts.ensure_lookup_table()
-
     bm.faces.new(vb)
     bm.faces.new(list(reversed(vt)))
-    for k in range(n):
-        kn = (k + 1) % n
+    for k in range(4):
+        kn = (k+1) % 4
+        bm.faces.new([vb[k], vb[kn], vt[kn], vt[k]])
+
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(mat)
+    return obj
+
+
+def create_single_wall(w, thickness, height, name, mat):
+    """单条线用默认厚度生成box"""
+    s, e = w["start"], w["end"]
+    dx = e[0] - s[0]
+    dy = e[1] - s[1]
+    ln = math.sqrt(dx**2 + dy**2)
+    if ln == 0:
+        return None
+    nx = -dy/ln * thickness/2
+    ny = dx/ln * thickness/2
+
+    bm = bmesh.new()
+    vb = [bm.verts.new((s[0]+nx,s[1]+ny,0)), bm.verts.new((s[0]-nx,s[1]-ny,0)),
+          bm.verts.new((e[0]-nx,e[1]-ny,0)), bm.verts.new((e[0]+nx,e[1]+ny,0))]
+    vt = [bm.verts.new((s[0]+nx,s[1]+ny,height)), bm.verts.new((s[0]-nx,s[1]-ny,height)),
+          bm.verts.new((e[0]-nx,e[1]-ny,height)), bm.verts.new((e[0]+nx,e[1]+ny,height))]
+    bm.verts.ensure_lookup_table()
+    bm.faces.new(vb)
+    bm.faces.new(list(reversed(vt)))
+    for k in range(4):
+        kn = (k+1)%4
         bm.faces.new([vb[k], vb[kn], vt[kn], vt[k]])
 
     mesh = bpy.data.meshes.new(name)
@@ -119,10 +154,6 @@ def main():
     mat_struct.diffuse_color = (0.4, 0.4, 0.4, 1.0)
     mat_demo = bpy.data.materials.new("可拆墙")
     mat_demo.diffuse_color = (0.7, 0.7, 0.7, 1.0)
-    mat_door = bpy.data.materials.new("门")
-    mat_door.diffuse_color = (0.8, 0.5, 0.2, 1.0)
-    mat_win = bpy.data.materials.new("窗")
-    mat_win.diffuse_color = (0.3, 0.5, 0.8, 1.0)
 
     heights = data.get("ceiling_heights", [2800])
     avg_h = sum(heights) / len(heights)
@@ -132,71 +163,30 @@ def main():
     bpy.context.scene.collection.children.link(collection)
     total = 0
 
-    # ================================================================
-    # 1. 墙体 - 闭合多边形拉伸
-    # ================================================================
-    for walls, mat, label in [
-        ([w for w in data["walls"] if not w.get("demolishable")], mat_struct, "承重墙"),
-        ([w for w in data["walls"] if w.get("demolishable")], mat_demo, "可拆墙"),
+    for walls, mat, label, default_thick in [
+        ([w for w in data["walls"] if not w.get("demolishable")], mat_struct, "承重墙", 240),
+        ([w for w in data["walls"] if w.get("demolishable")], mat_demo, "可拆墙", 100),
     ]:
-        polys = find_closed_polygons(walls)
-        print(f"{label}: {len(walls)}条线 → {len(polys)}个多边形")
+        pairs, used = find_wall_pairs(walls)
+        print(f"{label}: {len(walls)}条线 → {len(pairs)}对配对")
 
-        # 去掉外边界：找包含所有其他多边形的那个
-        def point_in_poly(pt, poly):
-            """射线法判断点是否在多边形内"""
-            x, y = pt
-            inside = False
-            n = len(poly)
-            for i in range(n):
-                j = (i + 1) % n
-                xi, yi = poly[i]
-                xj, yj = poly[j]
-                if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
-                    inside = not inside
-            return inside
-
-        def poly_center(p):
-            xs = [k[0] for k in p]
-            ys = [k[1] for k in p]
-            return (sum(xs)/len(xs), sum(ys)/len(ys))
-
-        outer_idx = -1
-        for i, pi in enumerate(polys):
-            contains_all = True
-            for j, pj in enumerate(polys):
-                if i == j:
-                    continue
-                cx, cy = poly_center(pj)
-                if not point_in_poly((cx, cy), pi):
-                    contains_all = False
-                    break
-            if contains_all:
-                outer_idx = i
-                break
-
-        if outer_idx >= 0:
-            print(f"  去掉外围多边形{outer_idx}")
-            polys = [p for i, p in enumerate(polys) if i != outer_idx]
-
-        for i, poly in enumerate(polys):
-            if len(poly) < 3:
-                continue
-            obj = create_extruded_polygon(poly, 240, avg_h, f"{label}_{i:03d}", mat)
-            if obj:
-                collection.objects.link(obj)
-                obj.scale = (0.001, 0.001, 0.001)
-                total += 1
-
-    # 门、窗暂不生成，先验证墙体
-
-    # ================================================================
-    # 缩放 mm→m（不归零，保留 CAD 原点）
-    # ================================================================
-    bpy.ops.object.select_all(action='SELECT')
-    for obj in bpy.context.selected_objects:
-        if obj.type == 'MESH':
+        for idx, (i, j, dist) in enumerate(pairs):
+            obj = create_wall_from_pair(walls[i], walls[j], avg_h, f"{label}_{idx:03d}", mat)
+            collection.objects.link(obj)
             obj.scale = (0.001, 0.001, 0.001)
+            total += 1
+
+        # 未配对的线用默认厚度
+        for i in range(len(walls)):
+            if i not in used:
+                obj = create_single_wall(walls[i], default_thick, avg_h, f"{label}_单_{i:03d}", mat)
+                if obj:
+                    collection.objects.link(obj)
+                    obj.scale = (0.001, 0.001, 0.001)
+                    total += 1
+
+    # 缩放 mm→m
+    bpy.ops.object.select_all(action='SELECT')
     if bpy.context.selected_objects:
         bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
         bpy.ops.object.transform_apply(scale=True)
