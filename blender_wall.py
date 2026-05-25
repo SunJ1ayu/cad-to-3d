@@ -448,8 +448,37 @@ def main():
         obj.scale = (0.001, 0.001, 0.001)
         total += 1
 
-    # 设置视图
+    # ================================================================
+    # 归零：缩放 mm→m，应用变换，移至原点，底面贴 Z=0
+    # ================================================================
     bpy.ops.object.select_all(action='SELECT')
+    for obj in bpy.context.selected_objects:
+        if obj.type == 'MESH':
+            obj.scale = (0.001, 0.001, 0.001)
+    bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
+    bpy.ops.object.transform_apply(scale=True)
+
+    # 计算边界
+    min_x = min_y = min_z = float('inf')
+    max_x = max_y = max_z = float('-inf')
+    for obj in bpy.context.selected_objects:
+        if obj.type == 'MESH':
+            for v in obj.data.vertices:
+                wc = obj.matrix_world @ v.co
+                min_x, max_x = min(min_x, wc.x), max(max_x, wc.x)
+                min_y, max_y = min(min_y, wc.y), max(max_y, wc.y)
+                min_z, max_z = min(min_z, wc.z), max(max_z, wc.z)
+
+    # 移到原点，底面贴 Z=0
+    cx = (min_x + max_x) / 2
+    cy = (min_y + max_y) / 2
+    for obj in bpy.context.selected_objects:
+        obj.location.x -= cx
+        obj.location.y -= cy
+        obj.location.z -= min_z
+
+    bpy.ops.object.select_all(action='DESELECT')
+    print(f"归零完成: 中心({cx:.2f},{cy:.2f}) 底面Z={min_z:.2f}→0")
 
     # 保存
     bpy.ops.wm.save_as_mainfile(filepath=blend_path)
