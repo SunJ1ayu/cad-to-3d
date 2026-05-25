@@ -142,17 +142,42 @@ def main():
         polys = find_closed_polygons(walls)
         print(f"{label}: {len(walls)}条线 → {len(polys)}个多边形")
 
-        # 去掉外围多边形（面积最大的那个，是建筑边界不是墙）
-        def poly_area(p):
-            a = 0
-            for k in range(len(p)-1):
-                a += p[k][0]*p[k+1][1] - p[k+1][0]*p[k][1]
-            return abs(a) / 2
+        # 去掉外边界：找包含所有其他多边形的那个
+        def point_in_poly(pt, poly):
+            """射线法判断点是否在多边形内"""
+            x, y = pt
+            inside = False
+            n = len(poly)
+            for i in range(n):
+                j = (i + 1) % n
+                xi, yi = poly[i]
+                xj, yj = poly[j]
+                if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+                    inside = not inside
+            return inside
 
-        if len(polys) > 1:
-            max_area = max(poly_area(p) for p in polys)
-            polys = [p for p in polys if poly_area(p) < max_area * 0.9]
-            print(f"  去掉外围，剩余 {len(polys)} 个多边形")
+        def poly_center(p):
+            xs = [k[0] for k in p]
+            ys = [k[1] for k in p]
+            return (sum(xs)/len(xs), sum(ys)/len(ys))
+
+        outer_idx = -1
+        for i, pi in enumerate(polys):
+            contains_all = True
+            for j, pj in enumerate(polys):
+                if i == j:
+                    continue
+                cx, cy = poly_center(pj)
+                if not point_in_poly((cx, cy), pi):
+                    contains_all = False
+                    break
+            if contains_all:
+                outer_idx = i
+                break
+
+        if outer_idx >= 0:
+            print(f"  去掉外围多边形{outer_idx}")
+            polys = [p for i, p in enumerate(polys) if i != outer_idx]
 
         for i, poly in enumerate(polys):
             if len(poly) < 3:
