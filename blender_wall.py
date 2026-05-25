@@ -141,6 +141,19 @@ def main():
     ]:
         polys = find_closed_polygons(walls)
         print(f"{label}: {len(walls)}条线 → {len(polys)}个多边形")
+
+        # 去掉外围多边形（面积最大的那个，是建筑边界不是墙）
+        def poly_area(p):
+            a = 0
+            for k in range(len(p)-1):
+                a += p[k][0]*p[k+1][1] - p[k+1][0]*p[k][1]
+            return abs(a) / 2
+
+        if len(polys) > 1:
+            max_area = max(poly_area(p) for p in polys)
+            polys = [p for p in polys if poly_area(p) < max_area * 0.9]
+            print(f"  去掉外围，剩余 {len(polys)} 个多边形")
+
         for i, poly in enumerate(polys):
             if len(poly) < 3:
                 continue
