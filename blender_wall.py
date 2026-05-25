@@ -150,68 +150,7 @@ def main():
                 obj.scale = (0.001, 0.001, 0.001)
                 total += 1
 
-    # ================================================================
-    # 2. 门
-    # ================================================================
-    door_heights = []
-    for ann in data["annotations"]:
-        if "door_height" in ann.get("parsed", {}):
-            door_heights.append(ann["parsed"]["door_height"][0])
-    dh = door_heights[0] if door_heights else 2100
-
-    print(f"门: {len(data['doors'])}个, 高={dh}mm")
-    for i, door in enumerate(data["doors"]):
-        if door.get("representation") != "polyline":
-            continue
-        cx, cy = door["position"]
-        w, d = door["width"], door["depth"]
-        hw, hd = w/2, d/2
-        bm = bmesh.new()
-        vb = [bm.verts.new((cx-hw,cy-hd,0)), bm.verts.new((cx+hw,cy-hd,0)),
-              bm.verts.new((cx+hw,cy+hd,0)), bm.verts.new((cx-hw,cy+hd,0))]
-        vt = [bm.verts.new((cx-hw,cy-hd,dh)), bm.verts.new((cx+hw,cy-hd,dh)),
-              bm.verts.new((cx+hw,cy+hd,dh)), bm.verts.new((cx-hw,cy+hd,dh))]
-        bm.verts.ensure_lookup_table()
-        bm.faces.new(vb); bm.faces.new(list(reversed(vt)))
-        for k in range(4):
-            kn = (k+1)%4
-            bm.faces.new([vb[k], vb[kn], vt[kn], vt[k]])
-        mesh = bpy.data.meshes.new(f"门_{i:03d}")
-        bm.to_mesh(mesh); bm.free()
-        obj = bpy.data.objects.new(f"门_{i:03d}", mesh)
-        obj.data.materials.append(mat_door)
-        collection.objects.link(obj)
-        obj.scale = (0.001, 0.001, 0.001)
-        total += 1
-
-    # ================================================================
-    # 3. 窗
-    # ================================================================
-    print(f"窗: {len(data['windows'])}个")
-    for i, win in enumerate(data["windows"]):
-        cx, cy = win["position"]
-        w = win["opening_length"]
-        sill = win.get("sill_height") or 900
-        wh = win.get("window_height") or 1500
-        fw = win.get("frame_width", 240) / 2
-        hw = w / 2
-        bm = bmesh.new()
-        vb = [bm.verts.new((cx-hw,cy-fw,sill)), bm.verts.new((cx+hw,cy-fw,sill)),
-              bm.verts.new((cx+hw,cy+fw,sill)), bm.verts.new((cx-hw,cy+fw,sill))]
-        vt = [bm.verts.new((cx-hw,cy-fw,sill+wh)), bm.verts.new((cx+hw,cy-fw,sill+wh)),
-              bm.verts.new((cx+hw,cy+fw,sill+wh)), bm.verts.new((cx-hw,cy+fw,sill+wh))]
-        bm.verts.ensure_lookup_table()
-        bm.faces.new(vb); bm.faces.new(list(reversed(vt)))
-        for k in range(4):
-            kn = (k+1)%4
-            bm.faces.new([vb[k], vb[kn], vt[kn], vt[k]])
-        mesh = bpy.data.meshes.new(f"窗_{i:03d}")
-        bm.to_mesh(mesh); bm.free()
-        obj = bpy.data.objects.new(f"窗_{i:03d}", mesh)
-        obj.data.materials.append(mat_win)
-        collection.objects.link(obj)
-        obj.scale = (0.001, 0.001, 0.001)
-        total += 1
+    # 门、窗暂不生成，先验证墙体
 
     # ================================================================
     # 缩放 mm→m（不归零，保留 CAD 原点）
