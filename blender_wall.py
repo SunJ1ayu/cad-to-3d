@@ -214,31 +214,16 @@ def main():
         total += 1
 
     # ================================================================
-    # 归零
+    # 缩放 mm→m（不归零，保留 CAD 原点）
     # ================================================================
     bpy.ops.object.select_all(action='SELECT')
+    for obj in bpy.context.selected_objects:
+        if obj.type == 'MESH':
+            obj.scale = (0.001, 0.001, 0.001)
     if bpy.context.selected_objects:
         bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
         bpy.ops.object.transform_apply(scale=True)
-
-        min_x = min_y = min_z = float('inf')
-        max_x = max_y = max_z = float('-inf')
-        for obj in bpy.context.selected_objects:
-            if obj.type == 'MESH':
-                for v in obj.data.vertices:
-                    wc = obj.matrix_world @ v.co
-                    min_x, max_x = min(min_x, wc.x), max(max_x, wc.x)
-                    min_y, max_y = min(min_y, wc.y), max(max_y, wc.y)
-                    min_z, max_z = min(min_z, wc.z), max(max_z, wc.z)
-
-        cx = (min_x + max_x) / 2
-        cy = (min_y + max_y) / 2
-        for obj in bpy.context.selected_objects:
-            obj.location.x -= cx
-            obj.location.y -= cy
-            obj.location.z -= min_z
-        bpy.ops.object.select_all(action='DESELECT')
-        print(f"归零: ({cx:.2f},{cy:.2f}) Z={min_z:.2f}→0")
+    bpy.ops.object.select_all(action='DESELECT')
 
     bpy.ops.wm.save_as_mainfile(filepath=blend_path)
     print(f"\n保存: {blend_path}")
