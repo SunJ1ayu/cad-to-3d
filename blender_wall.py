@@ -218,49 +218,10 @@ def main():
     total = 0
 
     # ================================================================
-    # 1. 墙体 - 每条线段单独拉伸，墙厚从平行线间距自动取
+    # 1. 墙体 - 每条线段单独拉伸，统一墙厚
+    #    承重墙 240mm，可拆墙 100mm（从平行线间距统计得出）
     # ================================================================
-    def find_wall_thickness(wall_line, all_walls):
-        """找与目标线段平行的最近线段，距离即墙厚"""
-        s = wall_line["start"]
-        e = wall_line["end"]
-        dx = e[0] - s[0]
-        dy = e[1] - s[1]
-        length = math.sqrt(dx**2 + dy**2)
-        if length == 0:
-            return 200  # 默认
-        angle = math.atan2(dy, dx)
-
-        best_dist = float("inf")
-        for other in all_walls:
-            if other is wall_line:
-                continue
-            os = other["start"]
-            oe = other["end"]
-            odx = oe[0] - os[0]
-            ody = oe[1] - os[1]
-            olen = math.sqrt(odx**2 + ody**2)
-            if olen == 0:
-                continue
-            oangle = math.atan2(ody, odx)
-
-            # 检查是否平行
-            diff = abs(angle - oangle) % math.pi
-            if diff > 0.1 and diff < math.pi - 0.1:
-                continue
-
-            # 计算线段中点到另一条线的距离
-            mx = (s[0] + e[0]) / 2
-            my = (s[1] + e[1]) / 2
-            # 点到线段距离
-            px = mx - os[0]
-            py = my - os[1]
-            dist = abs(py * odx - px * ody) / olen
-
-            if dist < best_dist and dist > 10:
-                best_dist = dist
-
-        return best_dist if best_dist < 500 else 200
+    WALL_THICKNESS = {"struct": 240, "demo": 100}
 
     def create_wall_segment(wall, thickness, height, name, mat):
         """将单条墙线段拉伸为 box"""
@@ -277,14 +238,12 @@ def main():
         ny = dx / length * thickness / 2
 
         bm = bmesh.new()
-        # 底部4个角
         verts_b = [
             bm.verts.new((s[0]+nx, s[1]+ny, 0)),
             bm.verts.new((s[0]-nx, s[1]-ny, 0)),
             bm.verts.new((e[0]-nx, e[1]-ny, 0)),
             bm.verts.new((e[0]+nx, e[1]+ny, 0)),
         ]
-        # 顶部4个角
         verts_t = [
             bm.verts.new((s[0]+nx, s[1]+ny, height)),
             bm.verts.new((s[0]-nx, s[1]-ny, height)),
@@ -311,9 +270,9 @@ def main():
         ("struct", struct_walls, mat_struct, "承重墙"),
         ("demo", demo_walls, mat_demo, "可拆墙"),
     ]:
-        print(f"{label}: {len(walls)}条线段")
+        thickness = WALL_THICKNESS[wall_type]
+        print(f"{label}: {len(walls)}条线段, 统一墙厚={thickness}mm")
         for i, w in enumerate(walls):
-            thickness = find_wall_thickness(w, walls)
             obj = create_wall_segment(w, thickness, avg_height, f"{label}_{i:03d}", mat)
             if obj:
                 total += 1
