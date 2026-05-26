@@ -439,10 +439,10 @@ def snap_box_xy_to_walls(obj, wall_objects, tol=0.03, constrain_bbox=None):
     obj.data.update()
 
 
-def bbox_from_xy_points(points, scale=1):
+def bbox_from_xy_points(points, scale=1, margin=0):
     xs = [p[0] * scale for p in points]
     ys = [p[1] * scale for p in points]
-    return min(xs), min(ys), max(xs), max(ys)
+    return min(xs) - margin, min(ys) - margin, max(xs) + margin, max(ys) + margin
 
 
 def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
@@ -651,8 +651,8 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
         snap_box_xy_to_walls(
             obj,
             wall_objects,
-            tol=0.03,
-            constrain_bbox=bbox_from_xy_points(footprint[:-1], scale=0.001),
+            tol=0.06,
+            constrain_bbox=bbox_from_xy_points(footprint[:-1], scale=0.001, margin=0.06),
         )
         objects.append(obj)
         width_label = f", 梁宽{beam_width}mm" if beam_width else ""
