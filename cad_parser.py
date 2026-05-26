@@ -410,7 +410,7 @@ def _associate_annotations(result: dict):
                 best_win["sill_height"] = parsed["sill_height_alt"][0]
             if parsed.get("window_height"):
                 best_win["window_height"] = parsed["window_height"][0]
-            elif parsed.get("window_height_1"):
+            elif parsed.get("window_height_1") and best_win.get("window_height") is None:
                 best_win["window_height"] = parsed["window_height_1"][0]
             best_win["annotations"].append(ann["raw_texts"][0])
 

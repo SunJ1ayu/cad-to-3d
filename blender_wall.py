@@ -303,6 +303,146 @@ def create_wall_box(s, e, thickness, height, name, mat):
     return obj
 
 
+def create_oriented_box(center, axis_x, axis_y, size_x, size_y, size_z, name):
+    cx, cy, cz = center
+    ux, uy = axis_x
+    vx, vy = axis_y
+    hx = size_x / 2
+    hy = size_y / 2
+    hz = size_z / 2
+    corners = []
+    for z in (cz - hz, cz + hz):
+        for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+            corners.append((
+                cx + ux * hx * sx + vx * hy * sy,
+                cy + uy * hx * sx + vy * hy * sy,
+                z,
+            ))
+
+    faces = [
+        (0, 1, 2, 3),
+        (7, 6, 5, 4),
+        (0, 4, 5, 1),
+        (1, 5, 6, 2),
+        (2, 6, 7, 3),
+        (3, 7, 4, 0),
+    ]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(corners, [], faces)
+    mesh.update()
+    return bpy.data.objects.new(name, mesh)
+
+
+def object_bbox_xy(obj):
+    coords = [obj.matrix_world @ v.co for v in obj.data.vertices]
+    xs = [v.x for v in coords]
+    ys = [v.y for v in coords]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def bboxes_overlap(a, b):
+    return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
+
+
+def create_window_infill_boxes(win, height, mat):
+    length = win.get("opening_length")
+    frame_width = win.get("frame_width") or 240
+    sill = win.get("sill_height")
+    window_height = win.get("window_height")
+    if not length or sill is None or window_height is None:
+        return []
+
+    angle = math.radians(win.get("rotation", 0))
+    axis_x = (math.cos(angle), math.sin(angle))
+    axis_y = (-axis_x[1], axis_x[0])
+    x, y = win["position"]
+    top_z = sill + window_height
+    specs = []
+    if sill > 20:
+        specs.append(("窗下墙", sill / 2, sill))
+    if height - top_z > 20:
+        specs.append(("窗上墙", top_z + (height - top_z) / 2, height - top_z))
+
+    objects = []
+    for label, center_z, box_height in specs:
+        obj = create_oriented_box(
+            (x, y, center_z),
+            axis_x,
+            axis_y,
+            length + 80,
+            frame_width,
+            box_height,
+            label,
+        )
+        obj.data.materials.append(mat)
+        objects.append(obj)
+    return objects
+
+
+def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
+    cutters = []
+    applied = 0
+    infill_objects = []
+    for i, win in enumerate(windows):
+        length = win.get("opening_length")
+        frame_width = win.get("frame_width") or 240
+        sill = win.get("sill_height")
+        window_height = win.get("window_height")
+        if not length or sill is None or window_height is None or window_height <= 0:
+            print(f"窗洞{i}: 跳过，缺少尺寸/高度")
+            continue
+
+        angle = math.radians(win.get("rotation", 0))
+        axis_x = (math.cos(angle), math.sin(angle))
+        axis_y = (-axis_x[1], axis_x[0])
+        x, y = win["position"]
+        cutter = create_oriented_box(
+            (x, y, sill + window_height / 2),
+            axis_x,
+            axis_y,
+            length + 80,
+            frame_width + 700,
+            window_height + 40,
+            f"窗洞切割_{i:03d}",
+        )
+        collection.objects.link(cutter)
+        cutter.scale = (0.001, 0.001, 0.001)
+        cutter_bbox = object_bbox_xy(cutter)
+
+        hit = 0
+        for obj in wall_objects:
+            if not bboxes_overlap(object_bbox_xy(obj), cutter_bbox):
+                continue
+            modifier = obj.modifiers.new(f"窗洞_{i:03d}", "BOOLEAN")
+            modifier.operation = "DIFFERENCE"
+            modifier.object = cutter
+            try:
+                modifier.solver = "EXACT"
+            except Exception:
+                pass
+            bpy.context.view_layer.objects.active = obj
+            obj.select_set(True)
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+            obj.select_set(False)
+            hit += 1
+
+        cutters.append(cutter)
+        applied += hit
+        print(f"窗洞{i}: 长{length}mm, 窗台{sill}mm, 窗高{window_height}mm, 命中{hit}个墙体")
+        if hit == 0:
+            boxes = create_window_infill_boxes(win, wall_height, mat)
+            for j, box in enumerate(boxes):
+                box.name = f"窗洞{i:03d}_{box.name}_{j:03d}"
+                collection.objects.link(box)
+                box.scale = (0.001, 0.001, 0.001)
+                infill_objects.append(box)
+            print(f"窗洞{i}: 未命中墙体，补{len(boxes)}块窗上下墙")
+
+    for cutter in cutters:
+        bpy.data.objects.remove(cutter, do_unlink=True)
+    return applied, infill_objects
+
+
 def setup_scene():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
@@ -337,6 +477,7 @@ def main():
     collection = bpy.data.collections.new("建筑构件")
     bpy.context.scene.collection.children.link(collection)
     total = 0
+    wall_objects = []
 
     for walls, mat, label, thick in [
         ([w for w in data["walls"] if not w.get("demolishable")], mat_struct, "承重墙", 240),
@@ -369,6 +510,7 @@ def main():
             if obj:
                 collection.objects.link(obj)
                 obj.scale = (0.001, 0.001, 0.001)
+                wall_objects.append(obj)
                 total += 1
 
         # 2. 平行双边线 → 一堵墙
@@ -378,6 +520,7 @@ def main():
             if obj:
                 collection.objects.link(obj)
                 obj.scale = (0.001, 0.001, 0.001)
+                wall_objects.append(obj)
                 total += 1
 
         # 3. 落单线段 → box 兜底
@@ -388,7 +531,18 @@ def main():
             if obj:
                 collection.objects.link(obj)
                 obj.scale = (0.001, 0.001, 0.001)
+                wall_objects.append(obj)
                 total += 1
+
+    window_hits, window_infill = apply_window_openings(
+        wall_objects,
+        data.get("windows", []),
+        collection,
+        avg_h,
+        mat_struct,
+    )
+    total += len(window_infill)
+    print(f"窗洞布尔: 命中{window_hits}次，补窗上下墙{len(window_infill)}块")
 
     # 缩放 mm→m
     bpy.ops.object.select_all(action='SELECT')
