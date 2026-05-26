@@ -180,6 +180,40 @@ def parse_dxf(filepath: str) -> dict:
             })
     result["doors"].extend(door_polys)
 
+    # BS-备用 中有门洞辅助线/矩形，MH 标注通常指向这些门洞而不是 FF-门小构件
+    reserve_polys = []
+    for e in msp.query("LWPOLYLINE"):
+        if e.dxf.layer == "BS-备用":
+            pts = [(round(p[0], 1), round(p[1], 1)) for p in e.get_points(format="xy")]
+            if len(pts) < 4:
+                continue
+            xs = [p[0] for p in pts]
+            ys = [p[1] for p in pts]
+            reserve_polys.append({
+                "type": "door",
+                "layer": "BS-备用",
+                "representation": "opening_polyline",
+                "position": [round(sum(xs) / len(xs), 1), round(sum(ys) / len(ys), 1)],
+                "bbox": [min(xs), min(ys), max(xs), max(ys)],
+                "width": round(max(max(xs) - min(xs), max(ys) - min(ys)), 1),
+                "depth": round(min(max(xs) - min(xs), max(ys) - min(ys)), 1),
+                "points": pts,
+                "door_height": None,
+                "door_width": None,
+                "annotations": [],
+            })
+
+    reserve_lines = []
+    for e in msp.query("LINE"):
+        if e.dxf.layer == "BS-备用":
+            s, end = e.dxf.start, e.dxf.end
+            reserve_lines.append({
+                "start": (round(s.x, 1), round(s.y, 1)),
+                "end": (round(end.x, 1), round(end.y, 1)),
+            })
+    reserve_polys.extend(_pair_lines_to_door_openings(reserve_lines))
+    result["doors"].extend(reserve_polys)
+
     # ============================================================
     # 4. 柱子/承重墙 (BS-柱) - 不可拆墙体，LINE 实体
     #    BS-柱 = 承重墙（不能拆），BS-墙 = 非承重墙（可以拆）
@@ -378,6 +412,73 @@ def _merge_lines_to_columns(lines: list) -> list:
     }]
 
 
+def _line_info(line: dict) -> dict | None:
+    sx, sy = line["start"]
+    ex, ey = line["end"]
+    dx = ex - sx
+    dy = ey - sy
+    length = math.hypot(dx, dy)
+    if length == 0:
+        return None
+    return {
+        "line": line,
+        "length": length,
+        "dir": (dx / length, dy / length),
+        "normal": (-dy / length, dx / length),
+        "mid": ((sx + ex) / 2, (sy + ey) / 2),
+        "points": [(sx, sy), (ex, ey)],
+    }
+
+
+def _pair_lines_to_door_openings(lines: list) -> list:
+    infos = [_line_info(line) for line in lines]
+    candidates = []
+    for i, a in enumerate(infos):
+        if not a:
+            continue
+        for j in range(i + 1, len(infos)):
+            b = infos[j]
+            if not b:
+                continue
+            dot = abs(a["dir"][0] * b["dir"][0] + a["dir"][1] * b["dir"][1])
+            if dot < 0.996:
+                continue
+            ux, uy = a["dir"]
+            nx, ny = a["normal"]
+            ai = sorted([p[0] * ux + p[1] * uy for p in a["points"]])
+            bi = sorted([p[0] * ux + p[1] * uy for p in b["points"]])
+            overlap = min(ai[1], bi[1]) - max(ai[0], bi[0])
+            distance = abs((b["mid"][0] - a["mid"][0]) * nx + (b["mid"][1] - a["mid"][1]) * ny)
+            if overlap < 500 or not (80 <= distance <= 400):
+                continue
+            candidates.append((distance - overlap * 0.001, i, j))
+
+    used = set()
+    openings = []
+    for _, i, j in sorted(candidates):
+        if i in used or j in used:
+            continue
+        used.add(i)
+        used.add(j)
+        pts = infos[i]["points"] + infos[j]["points"]
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        openings.append({
+            "type": "door",
+            "layer": "BS-备用",
+            "representation": "opening_lines",
+            "position": [round(sum(xs) / len(xs), 1), round(sum(ys) / len(ys), 1)],
+            "bbox": [min(xs), min(ys), max(xs), max(ys)],
+            "width": round(max(max(xs) - min(xs), max(ys) - min(ys)), 1),
+            "depth": round(min(max(xs) - min(xs), max(ys) - min(ys)), 1),
+            "points": pts,
+            "door_height": None,
+            "door_width": None,
+            "annotations": [],
+        })
+    return openings
+
+
 def _associate_annotations(result: dict):
     """将 SH-文字 标注关联到最近的窗户/门
     只关联窗相关标注（H1窗台、H2窗、H1窗），其他标注（CH、H=、W=）保留原文不强制关联。
@@ -443,14 +544,26 @@ def _associate_annotations(result: dict):
         best_door = None
         best_dist = float("inf")
         for door in result["doors"]:
-            dx, dy = door["position"]
-            dist = math.sqrt((ax - dx)**2 + (ay - dy)**2)
+            dist = _distance_to_bbox_or_position((ax, ay), door)
             if dist < best_dist:
                 best_dist = dist
                 best_door = door
-        if best_door and best_dist < 8000:
+        if best_door and best_dist < 1500:
             best_door["door_height"] = parsed["door_height"][0]
             best_door["annotations"].append(ann["raw_texts"][0])
+
+
+def _distance_to_bbox_or_position(point: tuple, item: dict) -> float:
+    px, py = point
+    bbox = item.get("bbox")
+    if bbox:
+        x0, y0, x1, y1 = bbox
+        dx = max(x0 - px, 0, px - x1)
+        dy = max(y0 - py, 0, py - y1)
+        return math.hypot(dx, dy)
+
+    dx, dy = item["position"]
+    return math.hypot(px - dx, py - dy)
 
 
 def main():
