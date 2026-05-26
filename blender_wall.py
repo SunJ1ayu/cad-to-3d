@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 JSON → Blender 3D 白模
-窄闭合轮廓直接拉伸，平行边线合并成墙，落单线段 box 兜底。
+闭合围合线直接按面积拉伸，围合线内的短辅助线忽略，未围合长边线再配对。
 """
 
 import bpy
@@ -67,37 +67,21 @@ def find_closed_polygons(walls):
     return polygons
 
 
-def poly_area(poly):
-    a = 0
-    for k in range(len(poly) - 1):
-        a += poly[k][0] * poly[k + 1][1] - poly[k + 1][0] * poly[k][1]
-    return abs(a) / 2
+def point_in_polygon(point, poly):
+    x, y = point
+    inside = False
+    for i in range(len(poly) - 1):
+        x1, y1 = poly[i]
+        x2, y2 = poly[i + 1]
+        if (y1 > y) != (y2 > y):
+            xinters = (x2 - x1) * (y - y1) / (y2 - y1) + x1
+            if x < xinters:
+                inside = not inside
+    return inside
 
 
-def poly_perimeter(poly):
-    return sum(
-        math.hypot(poly[k + 1][0] - poly[k][0], poly[k + 1][1] - poly[k][1])
-        for k in range(len(poly) - 1)
-    )
-
-
-def is_wall_outline(poly, max_thin_side=600, max_area=650000):
-    """只把窄闭合轮廓当墙体，避免把房间/区域实心拉伸。"""
-    area = poly_area(poly)
-    perim = poly_perimeter(poly)
-    if area <= 0 or perim <= 0:
-        return False
-
-    xs = [p[0] for p in poly[:-1]]
-    ys = [p[1] for p in poly[:-1]]
-    bbox_w = max(xs) - min(xs)
-    bbox_h = max(ys) - min(ys)
-    if bbox_w <= 0 or bbox_h <= 0:
-        return False
-
-    # 这里不用 avg_width 单独判定：大房间轮廓也可能因为周长很长而算出较小均宽。
-    # 先按包围盒短边和面积收紧，只接受短墙、柱、墙垛这类窄闭合轮廓。
-    return min(bbox_w, bbox_h) <= max_thin_side and area <= max_area
+def line_midpoint(w):
+    return ((w["start"][0] + w["end"][0]) / 2, (w["start"][1] + w["end"][1]) / 2)
 
 
 def line_key_for_wall(w, tol=10.0):
@@ -114,6 +98,13 @@ def polygon_line_keys(poly):
         (min(poly[k], poly[k + 1]), max(poly[k], poly[k + 1]))
         for k in range(len(poly) - 1)
     }
+
+
+def is_line_covered_by_polygons(w, edge_keys, polygons):
+    if line_key_for_wall(w) in edge_keys:
+        return True
+    mid = line_midpoint(w)
+    return any(point_in_polygon(mid, poly) for poly in polygons)
 
 
 def create_extruded_polygon(poly_keys, height, name, mat):
@@ -305,7 +296,7 @@ def main():
         ([w for w in data["walls"] if not w.get("demolishable")], mat_struct, "承重墙", 240),
         ([w for w in data["walls"] if w.get("demolishable")], mat_demo, "可拆墙", 100),
     ]:
-        polys = [p for p in find_closed_polygons(walls) if is_wall_outline(p)]
+        polys = find_closed_polygons(walls)
         covered_keys = set()
         for poly in polys:
             covered_keys.update(polygon_line_keys(poly))
@@ -313,7 +304,7 @@ def main():
         remaining = []
         original_indices = []
         for i, w in enumerate(walls):
-            if line_key_for_wall(w) not in covered_keys:
+            if not is_line_covered_by_polygons(w, covered_keys, polys):
                 remaining.append(w)
                 original_indices.append(i)
 
@@ -322,13 +313,13 @@ def main():
         fallback = [idx for idx in unpaired if should_create_fallback(remaining[idx])]
         skipped = len(unpaired) - len(fallback)
 
-        print(f"{label}: {len(walls)}条线 → {len(polys)}个窄闭合轮廓 + {len(pairs)}组成对边线 + {len(fallback)}条兜底(跳过{skipped}条短辅助线)")
+        print(f"{label}: {len(walls)}条线 → {len(polys)}个围合面 + {len(pairs)}组成对边线 + {len(fallback)}条兜底(跳过{skipped}条短辅助线)")
 
-        # 1. 窄闭合轮廓拉伸
+        # 1. 闭合围合面直接拉伸
         for i, poly in enumerate(polys):
             if len(poly) < 3:
                 continue
-            obj = create_extruded_polygon(poly, avg_h, f"{label}_轮廓{i:03d}", mat)
+            obj = create_extruded_polygon(poly, avg_h, f"{label}_围合{i:03d}", mat)
             if obj:
                 collection.objects.link(obj)
                 obj.scale = (0.001, 0.001, 0.001)
