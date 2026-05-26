@@ -705,6 +705,28 @@ def polygon_center(points):
     )
 
 
+def polygon_area(points):
+    if len(points) < 3:
+        return 0
+    area = 0
+    for i in range(len(points) - 1):
+        area += points[i][0] * points[i + 1][1] - points[i + 1][0] * points[i][1]
+    return abs(area) / 2
+
+
+def polygon_bbox(points):
+    return (
+        min(x for x, _ in points),
+        min(y for _, y in points),
+        max(x for x, _ in points),
+        max(y for _, y in points),
+    )
+
+
+def same_bbox(a, b, tol=1.0):
+    return all(abs(a[i] - b[i]) <= tol for i in range(4))
+
+
 def bbox_center(bbox):
     return ((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)
 
@@ -839,11 +861,14 @@ def ceiling_footprints_from_walls_and_beams(data):
         )
 
     blocked_polygons = wall_polygons + beam_polygons
+    blocked_bboxes = [polygon_bbox(poly) for poly in blocked_polygons]
     edges = data.get("walls", []) + beam_lines
     polygons = find_closed_polygons(edges)
     return [
         poly for poly in polygons
         if len(poly) >= 4
+        and polygon_area(poly) >= 3_000_000
+        and not any(same_bbox(polygon_bbox(poly), blocked_bbox) for blocked_bbox in blocked_bboxes)
         and not any(point_in_polygon(polygon_center(poly), blocked) for blocked in blocked_polygons)
     ]
 
