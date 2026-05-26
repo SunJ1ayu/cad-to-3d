@@ -348,6 +348,59 @@ def create_single_line_beam_box(s, e, thickness, height, name, mat, wall_objects
     return obj
 
 
+def snap_single_line_beam_ends(obj, target_objects, tol=0.02):
+    """单线梁只沿自身长度方向吸端点，避免宽度被压塌。"""
+    bpy.context.view_layer.update()
+    points = object_xy_coords(obj)
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    width_x = max(xs) - min(xs)
+    width_y = max(ys) - min(ys)
+    axis = "y" if width_y >= width_x else "x"
+
+    target_points = [point for target in target_objects for point in object_xy_coords(target)]
+    if not target_points:
+        return
+
+    if axis == "y":
+        current_ends = (min(ys), max(ys))
+        candidates = [
+            py
+            for px, py in target_points
+            if min(xs) - tol <= px <= max(xs) + tol
+        ]
+    else:
+        current_ends = (min(xs), max(xs))
+        candidates = [
+            px
+            for px, py in target_points
+            if min(ys) - tol <= py <= max(ys) + tol
+        ]
+
+    targets = list(current_ends)
+    for idx, current in enumerate(current_ends):
+        nearby = [candidate for candidate in candidates if abs(candidate - current) <= tol]
+        if nearby:
+            targets[idx] = min(nearby, key=lambda candidate: abs(candidate - current))
+
+    sx = obj.scale.x if obj.scale.x else 1
+    sy = obj.scale.y if obj.scale.y else 1
+    for vert in obj.data.vertices:
+        world_x = vert.co.x * sx
+        world_y = vert.co.y * sy
+        if axis == "y":
+            if abs(world_y - current_ends[0]) < 0.001:
+                vert.co.y = targets[0] / sy
+            elif abs(world_y - current_ends[1]) < 0.001:
+                vert.co.y = targets[1] / sy
+        else:
+            if abs(world_x - current_ends[0]) < 0.001:
+                vert.co.x = targets[0] / sx
+            elif abs(world_x - current_ends[1]) < 0.001:
+                vert.co.x = targets[1] / sx
+    obj.data.update()
+
+
 def create_oriented_box(center, axis_x, axis_y, size_x, size_y, size_z, name):
     cx, cy, cz = center
     ux, uy = axis_x
@@ -1027,6 +1080,7 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
         obj.data.update()
         collection.objects.link(obj)
         obj.scale = (0.001, 0.001, 0.001)
+        snap_single_line_beam_ends(obj, wall_objects + objects, tol=0.02)
         obj["single_line_beam_fallback"] = True
         objects.append(obj)
         print(f"梁{original_idx}: 未配对单线兜底，梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm, 梁宽{beam_width}mm")
