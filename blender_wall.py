@@ -304,6 +304,50 @@ def create_wall_box(s, e, thickness, height, name, mat):
     return obj
 
 
+def create_single_line_beam_box(s, e, thickness, height, name, mat, wall_objects):
+    """把 CAD 单线作为靠墙侧边，向远离最近墙体的一侧生成梁盒。"""
+    dx = e[0] - s[0]
+    dy = e[1] - s[1]
+    ln = math.sqrt(dx**2 + dy**2)
+    if ln == 0:
+        return None
+
+    nx = -dy / ln
+    ny = dx / ln
+    mid = ((s[0] + e[0]) / 2 * 0.001, (s[1] + e[1]) / 2 * 0.001)
+
+    side = 1
+    if wall_objects:
+        nearest_wall = min(
+            wall_objects,
+            key=lambda wall: (bbox_center(object_bbox_xy(wall))[0] - mid[0]) ** 2
+            + (bbox_center(object_bbox_xy(wall))[1] - mid[1]) ** 2,
+        )
+        wall_center = bbox_center(object_bbox_xy(nearest_wall))
+        wall_side = (wall_center[0] - mid[0]) * nx + (wall_center[1] - mid[1]) * ny
+        side = -1 if wall_side >= 0 else 1
+
+    ox = nx * thickness * side
+    oy = ny * thickness * side
+    bm = bmesh.new()
+    vb = [bm.verts.new((s[0], s[1], 0)), bm.verts.new((e[0], e[1], 0)),
+          bm.verts.new((e[0] + ox, e[1] + oy, 0)), bm.verts.new((s[0] + ox, s[1] + oy, 0))]
+    vt = [bm.verts.new((s[0], s[1], height)), bm.verts.new((e[0], e[1], height)),
+          bm.verts.new((e[0] + ox, e[1] + oy, height)), bm.verts.new((s[0] + ox, s[1] + oy, height))]
+    bm.verts.ensure_lookup_table()
+    bm.faces.new(vb)
+    bm.faces.new(list(reversed(vt)))
+    for k in range(4):
+        kn = (k + 1) % 4
+        bm.faces.new([vb[k], vb[kn], vt[kn], vt[k]])
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(mat)
+    return obj
+
+
 def create_oriented_box(center, axis_x, axis_y, size_x, size_y, size_z, name):
     cx, cy, cz = center
     ux, uy = axis_x
@@ -965,13 +1009,14 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
             skipped_unpaired += 1
             print(f"梁{original_idx}: 跳过，梁底标高{beam_bottom}mm已到顶")
             continue
-        obj = create_wall_box(
+        obj = create_single_line_beam_box(
             beam["start"],
             beam["end"],
             beam_width,
             beam_depth,
             f"梁{original_idx:03d}",
             mat,
+            wall_objects,
         )
         if not obj:
             skipped_unpaired += 1
