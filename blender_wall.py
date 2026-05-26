@@ -443,6 +443,54 @@ def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
     return applied, infill_objects
 
 
+def create_door_header_boxes(doors, wall_height, mat, collection):
+    objects = []
+    for i, door in enumerate(doors):
+        door_height = door.get("door_height")
+        bbox = door.get("bbox")
+        if door_height is None or not bbox:
+            print(f"门洞{i}: 跳过，缺少门高或bbox")
+            continue
+        header_height = wall_height - door_height
+        if header_height <= 20:
+            print(f"门洞{i}: 跳过，门高已到顶")
+            continue
+
+        x0, y0, x1, y1 = bbox
+        sx = x1 - x0
+        sy = y1 - y0
+        cx = (x0 + x1) / 2
+        cy = (y0 + y1) / 2
+        cz = door_height + header_height / 2
+
+        if sx >= sy:
+            axis_x = (1, 0)
+            axis_y = (0, 1)
+            size_x = sx
+            size_y = max(sy, 240)
+        else:
+            axis_x = (0, 1)
+            axis_y = (1, 0)
+            size_x = sy
+            size_y = max(sx, 240)
+
+        obj = create_oriented_box(
+            (cx, cy, cz),
+            axis_x,
+            axis_y,
+            size_x,
+            size_y,
+            header_height,
+            f"门洞{i:03d}_门头墙",
+        )
+        obj.data.materials.append(mat)
+        collection.objects.link(obj)
+        obj.scale = (0.001, 0.001, 0.001)
+        objects.append(obj)
+        print(f"门洞{i}: 门高{door_height}mm, 补门头墙{header_height:.0f}mm")
+    return objects
+
+
 def setup_scene():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
@@ -543,6 +591,15 @@ def main():
     )
     total += len(window_infill)
     print(f"窗洞布尔: 命中{window_hits}次，补窗上下墙{len(window_infill)}块")
+
+    door_headers = create_door_header_boxes(
+        data.get("doors", []),
+        avg_h,
+        mat_struct,
+        collection,
+    )
+    total += len(door_headers)
+    print(f"门洞门头墙: 补{len(door_headers)}块")
 
     # 缩放 mm→m
     bpy.ops.object.select_all(action='SELECT')
