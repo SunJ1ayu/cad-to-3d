@@ -1,0 +1,3457 @@
+{
+  "meta": {
+    "source_file": "/root/.openclaw/media/qqbot/downloads/新块_1779718918511_984950.dxf",
+    "layers": [
+      "0",
+      "DEFPOINTS",
+      "SH-尺寸",
+      "SH-文字",
+      "BS-墙",
+      "BS-窗",
+      "BS-柱",
+      "BS-深灰填充",
+      "DS-半高隔断",
+      "FF-门",
+      "BS-备用",
+      "BS-梁",
+      "FC-Text Annotation",
+      "EL-通用"
+    ]
+  },
+  "walls": [
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        34421.6,
+        -57364.5
+      ],
+      "end": [
+        34421.6,
+        -57294.5
+      ],
+      "length": 70.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        34421.6,
+        -57294.5
+      ],
+      "end": [
+        34551.6,
+        -57294.5
+      ],
+      "length": 130.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        34551.6,
+        -57294.5
+      ],
+      "end": [
+        34551.6,
+        -57484.5
+      ],
+      "length": 190.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        34551.6,
+        -57484.5
+      ],
+      "end": [
+        32056.6,
+        -57484.5
+      ],
+      "length": 2495.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        31251.6,
+        -57364.5
+      ],
+      "end": [
+        34421.6,
+        -57364.5
+      ],
+      "length": 3170.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        31836.6,
+        -57784.5
+      ],
+      "end": [
+        32056.6,
+        -57784.5
+      ],
+      "length": 220.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        31836.6,
+        -57584.5
+      ],
+      "end": [
+        31836.6,
+        -57784.5
+      ],
+      "length": 200.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        32056.6,
+        -57484.5
+      ],
+      "end": [
+        32056.6,
+        -57784.5
+      ],
+      "length": 300.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        31836.6,
+        -57584.5
+      ],
+      "end": [
+        31251.6,
+        -57584.5
+      ],
+      "length": 585.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        31251.6,
+        -57584.5
+      ],
+      "end": [
+        31251.6,
+        -57364.5
+      ],
+      "length": 220.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        34421.6,
+        -55754.5
+      ],
+      "end": [
+        34551.6,
+        -55754.5
+      ],
+      "length": 130.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        34551.6,
+        -55754.5
+      ],
+      "end": [
+        34551.6,
+        -56404.5
+      ],
+      "length": 650.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        34551.6,
+        -56404.5
+      ],
+      "end": [
+        34421.6,
+        -56404.5
+      ],
+      "length": 130.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        34421.6,
+        -56404.5
+      ],
+      "end": [
+        34421.6,
+        -55754.5
+      ],
+      "length": 650.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        31836.6,
+        -58264.5
+      ],
+      "end": [
+        32056.6,
+        -58264.5
+      ],
+      "length": 220.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        32056.6,
+        -58264.5
+      ],
+      "end": [
+        32056.6,
+        -59394.5
+      ],
+      "length": 1130.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        32056.6,
+        -59394.5
+      ],
+      "end": [
+        31836.6,
+        -59394.5
+      ],
+      "length": 220.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-墙",
+      "demolishable": true,
+      "start": [
+        31836.6,
+        -59394.5
+      ],
+      "end": [
+        31836.6,
+        -58264.5
+      ],
+      "length": 1130.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        28811.6,
+        -58564.5
+      ],
+      "end": [
+        28571.6,
+        -58564.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        28811.6,
+        -58564.5
+      ],
+      "end": [
+        28811.6,
+        -59159.5
+      ],
+      "length": 595.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        28811.6,
+        -59159.5
+      ],
+      "end": [
+        29191.6,
+        -59159.5
+      ],
+      "length": 380.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        29191.6,
+        -59159.5
+      ],
+      "end": [
+        29191.6,
+        -59394.5
+      ],
+      "length": 235.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        29191.6,
+        -59394.5
+      ],
+      "end": [
+        28811.6,
+        -59394.5
+      ],
+      "length": 380.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        28811.6,
+        -59394.5
+      ],
+      "end": [
+        28811.6,
+        -62169.5
+      ],
+      "length": 2775.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        28571.6,
+        -58564.5
+      ],
+      "end": [
+        28571.6,
+        -62409.5
+      ],
+      "length": 3845.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        28811.6,
+        -62169.5
+      ],
+      "end": [
+        29316.6,
+        -62169.5
+      ],
+      "length": 505.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        34321.6,
+        -62169.5
+      ],
+      "end": [
+        40171.6,
+        -62169.5
+      ],
+      "length": 5850.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        34321.6,
+        -62409.5
+      ],
+      "end": [
+        40556.6,
+        -62409.5
+      ],
+      "length": 6235.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40171.6,
+        -62169.5
+      ],
+      "end": [
+        40171.6,
+        -61514.5
+      ],
+      "length": 655.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40171.6,
+        -61514.5
+      ],
+      "end": [
+        40266.6,
+        -61514.5
+      ],
+      "length": 95.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40266.6,
+        -59409.5
+      ],
+      "end": [
+        40556.6,
+        -59409.5
+      ],
+      "length": 290.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40266.6,
+        -59409.5
+      ],
+      "end": [
+        40266.6,
+        -58759.5
+      ],
+      "length": 650.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40266.6,
+        -58759.5
+      ],
+      "end": [
+        39716.6,
+        -58759.5
+      ],
+      "length": 550.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        39716.6,
+        -58759.5
+      ],
+      "end": [
+        39716.6,
+        -58059.5
+      ],
+      "length": 700.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        39716.6,
+        -56264.5
+      ],
+      "end": [
+        39716.6,
+        -55754.5
+      ],
+      "length": 510.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40551.6,
+        -55754.5
+      ],
+      "end": [
+        37931.6,
+        -55754.5
+      ],
+      "length": 2620.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        37931.6,
+        -55754.5
+      ],
+      "end": [
+        37931.6,
+        -55524.5
+      ],
+      "length": 230.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        37931.6,
+        -55524.5
+      ],
+      "end": [
+        40226.6,
+        -55524.5
+      ],
+      "length": 2295.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40226.6,
+        -55524.5
+      ],
+      "end": [
+        40226.6,
+        -54889.5
+      ],
+      "length": 635.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40226.6,
+        -54889.5
+      ],
+      "end": [
+        40316.6,
+        -54889.5
+      ],
+      "length": 90.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40316.6,
+        -53079.5
+      ],
+      "end": [
+        40316.6,
+        -52179.5
+      ],
+      "length": 900.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40556.6,
+        -53079.5
+      ],
+      "end": [
+        40556.6,
+        -51939.5
+      ],
+      "length": 1140.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40316.6,
+        -52179.5
+      ],
+      "end": [
+        34551.6,
+        -52179.5
+      ],
+      "length": 5765.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40556.6,
+        -51939.5
+      ],
+      "end": [
+        34321.6,
+        -51939.5
+      ],
+      "length": 6235.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        34551.6,
+        -55754.5
+      ],
+      "end": [
+        34321.6,
+        -55754.5
+      ],
+      "length": 230.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        34321.6,
+        -55754.5
+      ],
+      "end": [
+        34321.6,
+        -51939.5
+      ],
+      "length": 3815.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        34321.6,
+        -54284.5
+      ],
+      "end": [
+        31251.6,
+        -54284.5
+      ],
+      "length": 3070.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        34321.6,
+        -54044.5
+      ],
+      "end": [
+        31011.6,
+        -54044.5
+      ],
+      "length": 3310.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        31251.6,
+        -54284.5
+      ],
+      "end": [
+        31251.6,
+        -55709.5
+      ],
+      "length": 1425.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        31251.6,
+        -55709.5
+      ],
+      "end": [
+        31011.6,
+        -55709.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        29656.6,
+        -57584.5
+      ],
+      "end": [
+        28571.6,
+        -57584.5
+      ],
+      "length": 1085.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        29656.6,
+        -57199.5
+      ],
+      "end": [
+        28571.6,
+        -57199.5
+      ],
+      "length": 1085.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40266.6,
+        -61514.5
+      ],
+      "end": [
+        40556.6,
+        -61514.5
+      ],
+      "length": 290.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        39716.6,
+        -58059.5
+      ],
+      "end": [
+        39956.6,
+        -58059.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        39716.6,
+        -56264.5
+      ],
+      "end": [
+        39956.6,
+        -56264.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        39956.6,
+        -58059.5
+      ],
+      "end": [
+        39956.6,
+        -58519.5
+      ],
+      "length": 460.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        39956.6,
+        -58519.5
+      ],
+      "end": [
+        40266.6,
+        -58519.5
+      ],
+      "length": 310.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        39956.6,
+        -56264.5
+      ],
+      "end": [
+        39956.6,
+        -55754.5
+      ],
+      "length": 510.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40316.6,
+        -54889.5
+      ],
+      "end": [
+        40556.6,
+        -54889.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40556.6,
+        -54889.5
+      ],
+      "end": [
+        40551.6,
+        -55754.5
+      ],
+      "length": 865.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40556.6,
+        -58759.5
+      ],
+      "end": [
+        40556.6,
+        -59409.5
+      ],
+      "length": 650.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40556.6,
+        -61514.5
+      ],
+      "end": [
+        40556.6,
+        -62409.5
+      ],
+      "length": 895.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        28571.6,
+        -57584.5
+      ],
+      "end": [
+        28571.6,
+        -57199.5
+      ],
+      "length": 385.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        29656.6,
+        -57584.5
+      ],
+      "end": [
+        29656.6,
+        -57199.5
+      ],
+      "length": 385.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        31011.6,
+        -55709.5
+      ],
+      "end": [
+        31011.6,
+        -54044.5
+      ],
+      "length": 1665.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40316.6,
+        -53079.5
+      ],
+      "end": [
+        40556.6,
+        -53079.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        29316.6,
+        -62409.5
+      ],
+      "end": [
+        28571.6,
+        -62409.5
+      ],
+      "length": 745.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        29316.6,
+        -62169.5
+      ],
+      "end": [
+        34321.6,
+        -62169.5
+      ],
+      "length": 5005.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        34321.6,
+        -62409.5
+      ],
+      "end": [
+        29316.6,
+        -62409.5
+      ],
+      "length": 5005.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        34321.6,
+        -62169.5
+      ],
+      "end": [
+        34321.6,
+        -62409.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        29316.6,
+        -62169.5
+      ],
+      "end": [
+        29316.6,
+        -62409.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        38481.6,
+        -52179.5
+      ],
+      "end": [
+        38481.6,
+        -51939.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        35151.6,
+        -52179.5
+      ],
+      "end": [
+        35151.6,
+        -51939.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        34551.6,
+        -55754.5
+      ],
+      "end": [
+        34551.6,
+        -52179.5
+      ],
+      "length": 3575.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        31251.6,
+        -57199.5
+      ],
+      "end": [
+        31011.6,
+        -57199.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        31011.6,
+        -57199.5
+      ],
+      "end": [
+        31011.6,
+        -57584.5
+      ],
+      "length": 385.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        31011.6,
+        -57584.5
+      ],
+      "end": [
+        31251.6,
+        -57584.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        31251.6,
+        -57584.5
+      ],
+      "end": [
+        31251.6,
+        -57199.5
+      ],
+      "length": 385.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40556.6,
+        -58759.5
+      ],
+      "end": [
+        40266.6,
+        -58759.5
+      ],
+      "length": 290.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40266.6,
+        -58759.5
+      ],
+      "end": [
+        40266.6,
+        -58519.5
+      ],
+      "length": 240.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40266.6,
+        -58519.5
+      ],
+      "end": [
+        40556.6,
+        -58519.5
+      ],
+      "length": 290.0
+    },
+    {
+      "type": "wall",
+      "layer": "BS-柱",
+      "demolishable": false,
+      "start": [
+        40556.6,
+        -58519.5
+      ],
+      "end": [
+        40556.6,
+        -58759.5
+      ],
+      "length": 240.0
+    }
+  ],
+  "windows": [
+    {
+      "type": "window",
+      "layer": "BS-窗",
+      "block_name": "hlw_1_480_220",
+      "position": [
+        31946.6,
+        -58024.5
+      ],
+      "opening_length": 480,
+      "frame_width": 220,
+      "rotation": 270.0,
+      "sill_height": 1920,
+      "window_height": 760,
+      "annotations": [
+        "H2窗：760",
+        "H1窗台：1920"
+      ]
+    },
+    {
+      "type": "window",
+      "layer": "BS-窗",
+      "block_name": "hlw_1_2105_290",
+      "position": [
+        40411.6,
+        -60462.0
+      ],
+      "opening_length": 2105,
+      "frame_width": 290,
+      "rotation": 270.0,
+      "sill_height": 130,
+      "window_height": 2160,
+      "annotations": [
+        "H2窗：2160",
+        "H1地台：130"
+      ]
+    },
+    {
+      "type": "window",
+      "layer": "BS-窗",
+      "block_name": "hlw_1_1810_240",
+      "position": [
+        40436.6,
+        -53984.5
+      ],
+      "opening_length": 1810,
+      "frame_width": 240,
+      "rotation": 270.0,
+      "sill_height": 940,
+      "window_height": 1335,
+      "annotations": [
+        "H2窗：1335",
+        "H1窗台：940"
+      ]
+    },
+    {
+      "type": "window",
+      "layer": "BS-窗",
+      "block_name": "hlw_1_1795_240",
+      "position": [
+        39836.6,
+        -57162.0
+      ],
+      "opening_length": 1795,
+      "frame_width": 240,
+      "rotation": 270.0,
+      "sill_height": 940,
+      "window_height": 1335,
+      "annotations": [
+        "H2窗：1335",
+        "H1窗台：940"
+      ]
+    },
+    {
+      "type": "window",
+      "layer": "BS-窗",
+      "block_name": "hlw_1_1490_240",
+      "position": [
+        31131.6,
+        -56454.5
+      ],
+      "opening_length": 1490,
+      "frame_width": 240,
+      "rotation": 270.0,
+      "sill_height": 940,
+      "window_height": 1525,
+      "annotations": [
+        "H2窗：1525",
+        "H1窗台：940",
+        "H1窗：2470"
+      ]
+    }
+  ],
+  "doors": [
+    {
+      "type": "door",
+      "layer": "FF-门",
+      "representation": "polyline",
+      "position": [
+        28691.6,
+        -57604.5
+      ],
+      "bbox": [
+        28571.6,
+        -57624.5,
+        28811.6,
+        -57584.5
+      ],
+      "width": 240.0,
+      "depth": 40.0,
+      "points": [
+        [
+          28811.6,
+          -57624.5
+        ],
+        [
+          28571.6,
+          -57624.5
+        ],
+        [
+          28571.6,
+          -57584.5
+        ],
+        [
+          28811.6,
+          -57584.5
+        ]
+      ],
+      "door_height": null,
+      "door_width": null,
+      "annotations": []
+    },
+    {
+      "type": "door",
+      "layer": "FF-门",
+      "representation": "polyline",
+      "position": [
+        28691.6,
+        -58544.5
+      ],
+      "bbox": [
+        28571.6,
+        -58564.5,
+        28811.6,
+        -58524.5
+      ],
+      "width": 240.0,
+      "depth": 40.0,
+      "points": [
+        [
+          28811.6,
+          -58524.5
+        ],
+        [
+          28571.6,
+          -58524.5
+        ],
+        [
+          28571.6,
+          -58564.5
+        ],
+        [
+          28811.6,
+          -58564.5
+        ]
+      ],
+      "door_height": null,
+      "door_width": null,
+      "annotations": []
+    },
+    {
+      "type": "door",
+      "layer": "FF-门",
+      "representation": "polyline",
+      "position": [
+        29261.6,
+        -57644.5
+      ],
+      "bbox": [
+        28811.6,
+        -57664.5,
+        29711.6,
+        -57624.5
+      ],
+      "width": 900.0,
+      "depth": 40.0,
+      "points": [
+        [
+          28811.6,
+          -57624.5
+        ],
+        [
+          28811.6,
+          -57664.5
+        ],
+        [
+          29711.6,
+          -57664.5
+        ],
+        [
+          29711.6,
+          -57624.5
+        ]
+      ],
+      "door_height": null,
+      "door_width": null,
+      "annotations": []
+    },
+    {
+      "type": "door",
+      "layer": "BS-备用",
+      "representation": "opening_polyline",
+      "position": [
+        34486.6,
+        -56849.5
+      ],
+      "bbox": [
+        34421.6,
+        -57294.5,
+        34551.6,
+        -56404.5
+      ],
+      "width": 890.0,
+      "depth": 130.0,
+      "points": [
+        [
+          34551.6,
+          -56404.5
+        ],
+        [
+          34551.6,
+          -57294.5
+        ],
+        [
+          34421.6,
+          -57294.5
+        ],
+        [
+          34421.6,
+          -56404.5
+        ]
+      ],
+      "door_height": 2150,
+      "door_width": null,
+      "annotations": [
+        "MH:2150"
+      ]
+    },
+    {
+      "type": "door",
+      "layer": "BS-备用",
+      "representation": "opening_lines",
+      "position": [
+        28691.6,
+        -58074.5
+      ],
+      "bbox": [
+        28571.6,
+        -58564.5,
+        28811.6,
+        -57584.5
+      ],
+      "width": 980.0,
+      "depth": 240.0,
+      "points": [
+        [
+          28811.6,
+          -57584.5
+        ],
+        [
+          28811.6,
+          -58564.5
+        ],
+        [
+          28571.6,
+          -57584.5
+        ],
+        [
+          28571.6,
+          -58564.5
+        ]
+      ],
+      "door_height": 2190,
+      "door_width": null,
+      "annotations": [
+        "MH:2190"
+      ]
+    }
+  ],
+  "columns": [
+    {
+      "type": "column",
+      "layer": "BS-柱",
+      "bbox": [
+        28571.6,
+        -62409.5,
+        40556.6,
+        -51939.5
+      ],
+      "width": 11985.0,
+      "depth": 10470.0,
+      "line_count": 56
+    }
+  ],
+  "beams": [
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        34321.6,
+        -57584.5
+      ],
+      "end": [
+        32056.6,
+        -57584.5
+      ],
+      "length": 2265.0,
+      "beam_height": 2495,
+      "beam_width": 100,
+      "annotations": [
+        "H=2495",
+        "W=100"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        34551.6,
+        -55784.5
+      ],
+      "end": [
+        34551.6,
+        -62169.5
+      ],
+      "length": 6385.0,
+      "beam_height": 2280,
+      "beam_width": 230,
+      "annotations": [
+        "H=2280",
+        "W=230"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        34321.6,
+        -55784.5
+      ],
+      "end": [
+        34321.6,
+        -59159.5
+      ],
+      "length": 3375.0,
+      "beam_height": 2280,
+      "beam_width": 100,
+      "annotations": [
+        "H=2280",
+        "W=100"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        29191.6,
+        -59394.5
+      ],
+      "end": [
+        34321.6,
+        -59394.5
+      ],
+      "length": 5130.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        29191.6,
+        -59159.5
+      ],
+      "end": [
+        34321.6,
+        -59159.5
+      ],
+      "length": 5130.0,
+      "beam_height": 2280,
+      "beam_width": 235,
+      "annotations": [
+        "H=2280",
+        "W=235",
+        "H=2280",
+        "W=235"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        34321.6,
+        -59394.5
+      ],
+      "end": [
+        34321.6,
+        -62169.5
+      ],
+      "length": 2775.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        30466.6,
+        -62169.5
+      ],
+      "end": [
+        30466.6,
+        -59394.5
+      ],
+      "length": 2775.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        30686.6,
+        -62169.5
+      ],
+      "end": [
+        30686.6,
+        -59394.5
+      ],
+      "length": 2775.0,
+      "beam_height": 2580,
+      "beam_width": 220,
+      "annotations": [
+        "H=2580",
+        "W=220"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        39716.6,
+        -58759.5
+      ],
+      "end": [
+        34551.6,
+        -58759.5
+      ],
+      "length": 5165.0,
+      "beam_height": 2295,
+      "beam_width": 95,
+      "annotations": [
+        "H=2295",
+        "W=95"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        39716.6,
+        -58539.5
+      ],
+      "end": [
+        34551.6,
+        -58539.5
+      ],
+      "length": 5165.0,
+      "beam_height": 2420,
+      "beam_width": 220,
+      "annotations": [
+        "H=2420",
+        "W=220"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        38716.6,
+        -58759.5
+      ],
+      "end": [
+        38716.6,
+        -62169.5
+      ],
+      "length": 3410.0,
+      "beam_height": 2485,
+      "beam_width": 235,
+      "annotations": [
+        "H=2485",
+        "W=235"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        38481.6,
+        -58759.5
+      ],
+      "end": [
+        38481.6,
+        -62169.5
+      ],
+      "length": 3410.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        40171.6,
+        -61514.5
+      ],
+      "end": [
+        40171.6,
+        -58759.5
+      ],
+      "length": 2755.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        37931.6,
+        -55754.5
+      ],
+      "end": [
+        34551.6,
+        -55754.5
+      ],
+      "length": 3380.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        37931.6,
+        -55524.5
+      ],
+      "end": [
+        34551.6,
+        -55524.5
+      ],
+      "length": 3380.0,
+      "beam_height": null,
+      "beam_width": 230,
+      "annotations": [
+        "W=230"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        36201.6,
+        -52179.5
+      ],
+      "end": [
+        36201.6,
+        -55524.5
+      ],
+      "length": 3345.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
+        36431.6,
+        -52179.5
+      ],
+      "end": [
+        36431.6,
+        -55524.5
+      ],
+      "length": 3345.0,
+      "beam_height": 2585,
+      "beam_width": 230,
+      "annotations": [
+        "H=2380",
+        "H=2585",
+        "W=230"
+      ]
+    }
+  ],
+  "partitions": [
+    {
+      "type": "partition",
+      "layer": "DS-半高隔断",
+      "start": [
+        30421.6,
+        -55709.5
+      ],
+      "end": [
+        30421.6,
+        -57199.5
+      ],
+      "length": 1490.0
+    },
+    {
+      "type": "partition",
+      "layer": "DS-半高隔断",
+      "start": [
+        30471.6,
+        -55759.5
+      ],
+      "end": [
+        30471.6,
+        -57199.5
+      ],
+      "length": 1440.0
+    },
+    {
+      "type": "partition",
+      "layer": "DS-半高隔断",
+      "start": [
+        30511.6,
+        -55799.5
+      ],
+      "end": [
+        30511.6,
+        -57199.5
+      ],
+      "length": 1400.0
+    },
+    {
+      "type": "partition",
+      "layer": "DS-半高隔断",
+      "start": [
+        40551.6,
+        -55754.5
+      ],
+      "end": [
+        40556.6,
+        -58519.5
+      ],
+      "length": 2765.0
+    },
+    {
+      "type": "partition",
+      "layer": "DS-半高隔断",
+      "start": [
+        40501.6,
+        -55754.5
+      ],
+      "end": [
+        40506.6,
+        -58519.5
+      ],
+      "length": 2765.0
+    },
+    {
+      "type": "partition",
+      "layer": "DS-半高隔断",
+      "start": [
+        40461.6,
+        -55754.6
+      ],
+      "end": [
+        40466.6,
+        -58519.6
+      ],
+      "length": 2765.0
+    },
+    {
+      "type": "partition",
+      "layer": "DS-半高隔断",
+      "start": [
+        31011.6,
+        -55709.5
+      ],
+      "end": [
+        30421.6,
+        -55709.5
+      ],
+      "length": 590.0
+    },
+    {
+      "type": "partition",
+      "layer": "DS-半高隔断",
+      "start": [
+        31011.6,
+        -55759.5
+      ],
+      "end": [
+        30471.6,
+        -55759.5
+      ],
+      "length": 540.0
+    },
+    {
+      "type": "partition",
+      "layer": "DS-半高隔断",
+      "start": [
+        31011.6,
+        -55799.5
+      ],
+      "end": [
+        30511.6,
+        -55799.5
+      ],
+      "length": 500.0
+    }
+  ],
+  "dimensions": [
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 240.0,
+      "defpoint": [
+        42056.6,
+        -62169.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 655.0,
+      "defpoint": [
+        42056.6,
+        -61514.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 2105.0,
+      "defpoint": [
+        42056.6,
+        -59409.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 650.0,
+      "defpoint": [
+        42056.6,
+        -58759.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 240.0,
+      "defpoint": [
+        42056.6,
+        -58519.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 460.0,
+      "defpoint": [
+        42056.6,
+        -58059.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 1795.0,
+      "defpoint": [
+        42056.6,
+        -56264.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 510.0,
+      "defpoint": [
+        42056.6,
+        -55754.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 230.0,
+      "defpoint": [
+        42056.6,
+        -55524.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 635.0,
+      "defpoint": [
+        42056.6,
+        -54889.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 1810.0,
+      "defpoint": [
+        42056.6,
+        -53079.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 900.0,
+      "defpoint": [
+        42056.6,
+        -52179.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 240.0,
+      "defpoint": [
+        42056.6,
+        -51939.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 240.0,
+      "defpoint": [
+        28811.6,
+        -63909.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 505.0,
+      "defpoint": [
+        29316.6,
+        -63909.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 340.0,
+      "defpoint": [
+        29656.6,
+        -63909.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 1355.0,
+      "defpoint": [
+        31011.6,
+        -63909.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 825.0,
+      "defpoint": [
+        31836.6,
+        -63909.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 220.0,
+      "defpoint": [
+        32056.6,
+        -63909.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 2495.0,
+      "defpoint": [
+        34551.6,
+        -63909.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 5165.0,
+      "defpoint": [
+        39716.6,
+        -63909.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 455.0,
+      "defpoint": [
+        40171.6,
+        -63909.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 385.0,
+      "defpoint": [
+        40556.6,
+        -63909.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 240.0,
+      "defpoint": [
+        27071.6,
+        -62169.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 410.0,
+      "defpoint": [
+        27071.6,
+        -61759.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 2365.0,
+      "defpoint": [
+        27071.6,
+        -59394.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 235.0,
+      "defpoint": [
+        27071.6,
+        -59159.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 595.0,
+      "defpoint": [
+        27071.6,
+        -58564.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 980.0,
+      "defpoint": [
+        27071.6,
+        -57584.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 220.0,
+      "defpoint": [
+        27071.6,
+        -57364.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 165.0,
+      "defpoint": [
+        27071.6,
+        -57199.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 1490.0,
+      "defpoint": [
+        27071.6,
+        -55709.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 1425.0,
+      "defpoint": [
+        27071.6,
+        -54284.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 240.0,
+      "defpoint": [
+        27071.6,
+        -54044.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 1865.0,
+      "defpoint": [
+        27071.6,
+        -52179.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 240.0,
+      "defpoint": [
+        27071.6,
+        -51939.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 240.0,
+      "defpoint": [
+        28811.6,
+        -50439.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 845.0,
+      "defpoint": [
+        29656.6,
+        -50439.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 1355.0,
+      "defpoint": [
+        31011.6,
+        -50439.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 240.0,
+      "defpoint": [
+        31251.6,
+        -50439.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 3070.0,
+      "defpoint": [
+        34321.6,
+        -50439.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 230.0,
+      "defpoint": [
+        34551.6,
+        -50439.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 320.0,
+      "defpoint": [
+        34871.6,
+        -50439.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 3060.0,
+      "defpoint": [
+        37931.6,
+        -50439.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 2385.0,
+      "defpoint": [
+        40316.6,
+        -50439.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 240.0,
+      "defpoint": [
+        40556.6,
+        -50439.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 10470.0,
+      "defpoint": [
+        42556.6,
+        -62409.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 11985.0,
+      "defpoint": [
+        28571.6,
+        -64409.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 10470.0,
+      "defpoint": [
+        26571.6,
+        -51939.5
+      ]
+    },
+    {
+      "type": "dimension",
+      "layer": "SH-尺寸",
+      "value": 11985.0,
+      "defpoint": [
+        40556.6,
+        -49939.5
+      ]
+    }
+  ],
+  "annotations": [
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-层高标注",
+      "position": [
+        35161.1,
+        -53508.8
+      ],
+      "parsed": {
+        "ceiling_height": [
+          2735
+        ]
+      },
+      "raw_texts": [
+        "CH=2735"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-层高标注",
+      "position": [
+        29531.5,
+        -58535.3
+      ],
+      "parsed": {
+        "ceiling_height": [
+          2785
+        ]
+      },
+      "raw_texts": [
+        "CH=2785"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-层高标注",
+      "position": [
+        38049.8,
+        -54335.8
+      ],
+      "parsed": {
+        "ceiling_height": [
+          2805
+        ]
+      },
+      "raw_texts": [
+        "CH=2805"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-层高标注",
+      "position": [
+        32511.0,
+        -55978.5
+      ],
+      "parsed": {
+        "ceiling_height": [
+          2785
+        ]
+      },
+      "raw_texts": [
+        "CH=2785"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-层高标注",
+      "position": [
+        32103.4,
+        -60893.8
+      ],
+      "parsed": {
+        "ceiling_height": [
+          2785
+        ]
+      },
+      "raw_texts": [
+        "CH=2785"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-层高标注",
+      "position": [
+        36325.6,
+        -60893.8
+      ],
+      "parsed": {
+        "ceiling_height": [
+          2785
+        ]
+      },
+      "raw_texts": [
+        "CH=2785"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-层高标注",
+      "position": [
+        36325.6,
+        -57272.1
+      ],
+      "parsed": {
+        "ceiling_height": [
+          2785
+        ]
+      },
+      "raw_texts": [
+        "CH=2785"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        40068.9,
+        -60033.8
+      ],
+      "parsed": {
+        "window_height": [
+          2160
+        ]
+      },
+      "raw_texts": [
+        "H2窗：2160"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        40126.9,
+        -60207.1
+      ],
+      "parsed": {
+        "sill_height_alt": [
+          130
+        ]
+      },
+      "raw_texts": [
+        "H1地台：130"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        31979.7,
+        -56101.7
+      ],
+      "parsed": {
+        "window_height": [
+          1525
+        ]
+      },
+      "raw_texts": [
+        "H2窗：1525"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        32037.7,
+        -56275.0
+      ],
+      "parsed": {
+        "sill_height": [
+          940
+        ]
+      },
+      "raw_texts": [
+        "H1窗台：940"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        30299.8,
+        -57653.4
+      ],
+      "parsed": {
+        "window_height_1": [
+          2470
+        ]
+      },
+      "raw_texts": [
+        "H1窗：2470"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        31559.0,
+        -57852.5
+      ],
+      "parsed": {
+        "window_height": [
+          760
+        ]
+      },
+      "raw_texts": [
+        "H2窗：760"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        31733.5,
+        -58025.8
+      ],
+      "parsed": {
+        "sill_height": [
+          1920
+        ]
+      },
+      "raw_texts": [
+        "H1窗台：1920"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        40097.7,
+        -53682.2
+      ],
+      "parsed": {
+        "window_height": [
+          1335
+        ]
+      },
+      "raw_texts": [
+        "H2窗：1335"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        40155.7,
+        -53855.6
+      ],
+      "parsed": {
+        "sill_height": [
+          940
+        ]
+      },
+      "raw_texts": [
+        "H1窗台：940"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        39497.7,
+        -56852.2
+      ],
+      "parsed": {
+        "window_height": [
+          1335
+        ]
+      },
+      "raw_texts": [
+        "H2窗：1335"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-窗标注",
+      "position": [
+        39555.7,
+        -57025.6
+      ],
+      "parsed": {
+        "sill_height": [
+          940
+        ]
+      },
+      "raw_texts": [
+        "H1窗台：940"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-门标注",
+      "position": [
+        28882.1,
+        -58006.8
+      ],
+      "parsed": {
+        "door_height": [
+          2190
+        ]
+      },
+      "raw_texts": [
+        "MH:2190"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-门标注",
+      "position": [
+        34693.5,
+        -56772.2
+      ],
+      "parsed": {
+        "door_height": [
+          2150
+        ]
+      },
+      "raw_texts": [
+        "MH:2150"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        30985.6,
+        -60803.0
+      ],
+      "parsed": {
+        "beam_height": [
+          2580
+        ]
+      },
+      "raw_texts": [
+        "H=2580"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        30992.2,
+        -60976.3
+      ],
+      "parsed": {
+        "beam_width": [
+          220
+        ]
+      },
+      "raw_texts": [
+        "W=220"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        30577.7,
+        -58766.6
+      ],
+      "parsed": {
+        "beam_height": [
+          2280
+        ]
+      },
+      "raw_texts": [
+        "H=2280"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        30584.2,
+        -58939.9
+      ],
+      "parsed": {
+        "beam_width": [
+          235
+        ]
+      },
+      "raw_texts": [
+        "W=235"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        36764.8,
+        -58157.9
+      ],
+      "parsed": {
+        "beam_height": [
+          2420
+        ]
+      },
+      "raw_texts": [
+        "H=2420"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        36771.3,
+        -58331.2
+      ],
+      "parsed": {
+        "beam_width": [
+          220
+        ]
+      },
+      "raw_texts": [
+        "W=220"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        39111.3,
+        -60728.1
+      ],
+      "parsed": {
+        "beam_height": [
+          2485
+        ]
+      },
+      "raw_texts": [
+        "H=2485"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        39117.8,
+        -60901.4
+      ],
+      "parsed": {
+        "beam_width": [
+          235
+        ]
+      },
+      "raw_texts": [
+        "W=235"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        39393.4,
+        -59152.3
+      ],
+      "parsed": {
+        "beam_height": [
+          2295
+        ]
+      },
+      "raw_texts": [
+        "H=2295"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        39400.0,
+        -59325.7
+      ],
+      "parsed": {
+        "beam_width": [
+          95
+        ]
+      },
+      "raw_texts": [
+        "W=95"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        33553.9,
+        -56369.4
+      ],
+      "parsed": {
+        "beam_height": [
+          2280
+        ]
+      },
+      "raw_texts": [
+        "H=2280"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        33560.4,
+        -56542.7
+      ],
+      "parsed": {
+        "beam_width": [
+          100
+        ]
+      },
+      "raw_texts": [
+        "W=100"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        36659.8,
+        -55133.2
+      ],
+      "parsed": {
+        "beam_height": [
+          2380
+        ]
+      },
+      "raw_texts": [
+        "H=2380"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        36666.4,
+        -55306.5
+      ],
+      "parsed": {
+        "beam_width": [
+          230
+        ]
+      },
+      "raw_texts": [
+        "W=230"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        36690.0,
+        -53711.6
+      ],
+      "parsed": {
+        "beam_height": [
+          2585
+        ]
+      },
+      "raw_texts": [
+        "H=2585"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        36696.5,
+        -53884.9
+      ],
+      "parsed": {
+        "beam_width": [
+          230
+        ]
+      },
+      "raw_texts": [
+        "W=230"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        33478.0,
+        -57708.8
+      ],
+      "parsed": {
+        "beam_height": [
+          2495
+        ]
+      },
+      "raw_texts": [
+        "H=2495"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        33484.5,
+        -57882.2
+      ],
+      "parsed": {
+        "beam_width": [
+          100
+        ]
+      },
+      "raw_texts": [
+        "W=100"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        33213.9,
+        -58766.6
+      ],
+      "parsed": {
+        "beam_height": [
+          2280
+        ]
+      },
+      "raw_texts": [
+        "H=2280"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        33220.5,
+        -58939.9
+      ],
+      "parsed": {
+        "beam_width": [
+          235
+        ]
+      },
+      "raw_texts": [
+        "W=235"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        34803.9,
+        -59927.4
+      ],
+      "parsed": {
+        "beam_height": [
+          2280
+        ]
+      },
+      "raw_texts": [
+        "H=2280"
+      ]
+    },
+    {
+      "type": "annotation",
+      "layer": "SH-文字",
+      "block_name": "SH-梁标注",
+      "position": [
+        34810.4,
+        -60100.7
+      ],
+      "parsed": {
+        "beam_width": [
+          230
+        ]
+      },
+      "raw_texts": [
+        "W=230"
+      ]
+    }
+  ],
+  "ceiling_heights": [
+    2735,
+    2785,
+    2805,
+    2785,
+    2785,
+    2785,
+    2785
+  ],
+  "raw_texts": [
+    {
+      "text": "CH=2735",
+      "block": "SH-层高标注",
+      "position": [
+        35161.1,
+        -53508.8
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "CH=2785",
+      "block": "SH-层高标注",
+      "position": [
+        29531.5,
+        -58535.3
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "CH=2805",
+      "block": "SH-层高标注",
+      "position": [
+        38049.8,
+        -54335.8
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "CH=2785",
+      "block": "SH-层高标注",
+      "position": [
+        32511.0,
+        -55978.5
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "CH=2785",
+      "block": "SH-层高标注",
+      "position": [
+        32103.4,
+        -60893.8
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "CH=2785",
+      "block": "SH-层高标注",
+      "position": [
+        36325.6,
+        -60893.8
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "CH=2785",
+      "block": "SH-层高标注",
+      "position": [
+        36325.6,
+        -57272.1
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H2窗：2160",
+      "block": "SH-窗标注",
+      "position": [
+        40068.9,
+        -60033.8
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H1地台：130",
+      "block": "SH-窗标注",
+      "position": [
+        40126.9,
+        -60207.1
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H2窗：1525",
+      "block": "SH-窗标注",
+      "position": [
+        31979.7,
+        -56101.7
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H1窗台：940",
+      "block": "SH-窗标注",
+      "position": [
+        32037.7,
+        -56275.0
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H1窗：2470",
+      "block": "SH-窗标注",
+      "position": [
+        30299.8,
+        -57653.4
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H2窗：760",
+      "block": "SH-窗标注",
+      "position": [
+        31559.0,
+        -57852.5
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H1窗台：1920",
+      "block": "SH-窗标注",
+      "position": [
+        31733.5,
+        -58025.8
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H2窗：1335",
+      "block": "SH-窗标注",
+      "position": [
+        40097.7,
+        -53682.2
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H1窗台：940",
+      "block": "SH-窗标注",
+      "position": [
+        40155.7,
+        -53855.6
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H2窗：1335",
+      "block": "SH-窗标注",
+      "position": [
+        39497.7,
+        -56852.2
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H1窗台：940",
+      "block": "SH-窗标注",
+      "position": [
+        39555.7,
+        -57025.6
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "MH:2190",
+      "block": "SH-门标注",
+      "position": [
+        28882.1,
+        -58006.8
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "MH:2150",
+      "block": "SH-门标注",
+      "position": [
+        34693.5,
+        -56772.2
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2580",
+      "block": "SH-梁标注",
+      "position": [
+        30985.6,
+        -60803.0
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=220",
+      "block": "SH-梁标注",
+      "position": [
+        30992.2,
+        -60976.3
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2280",
+      "block": "SH-梁标注",
+      "position": [
+        30577.7,
+        -58766.6
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=235",
+      "block": "SH-梁标注",
+      "position": [
+        30584.2,
+        -58939.9
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2420",
+      "block": "SH-梁标注",
+      "position": [
+        36764.8,
+        -58157.9
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=220",
+      "block": "SH-梁标注",
+      "position": [
+        36771.3,
+        -58331.2
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2485",
+      "block": "SH-梁标注",
+      "position": [
+        39111.3,
+        -60728.1
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=235",
+      "block": "SH-梁标注",
+      "position": [
+        39117.8,
+        -60901.4
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2295",
+      "block": "SH-梁标注",
+      "position": [
+        39393.4,
+        -59152.3
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=95",
+      "block": "SH-梁标注",
+      "position": [
+        39400.0,
+        -59325.7
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2280",
+      "block": "SH-梁标注",
+      "position": [
+        33553.9,
+        -56369.4
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=100",
+      "block": "SH-梁标注",
+      "position": [
+        33560.4,
+        -56542.7
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2380",
+      "block": "SH-梁标注",
+      "position": [
+        36659.8,
+        -55133.2
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=230",
+      "block": "SH-梁标注",
+      "position": [
+        36666.4,
+        -55306.5
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2585",
+      "block": "SH-梁标注",
+      "position": [
+        36690.0,
+        -53711.6
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=230",
+      "block": "SH-梁标注",
+      "position": [
+        36696.5,
+        -53884.9
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2495",
+      "block": "SH-梁标注",
+      "position": [
+        33478.0,
+        -57708.8
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=100",
+      "block": "SH-梁标注",
+      "position": [
+        33484.5,
+        -57882.2
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2280",
+      "block": "SH-梁标注",
+      "position": [
+        33213.9,
+        -58766.6
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=235",
+      "block": "SH-梁标注",
+      "position": [
+        33220.5,
+        -58939.9
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "H=2280",
+      "block": "SH-梁标注",
+      "position": [
+        34803.9,
+        -59927.4
+      ],
+      "layer": "SH-文字"
+    },
+    {
+      "text": "W=230",
+      "block": "SH-梁标注",
+      "position": [
+        34810.4,
+        -60100.7
+      ],
+      "layer": "SH-文字"
+    }
+  ]
+}
