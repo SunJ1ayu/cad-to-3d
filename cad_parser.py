@@ -242,6 +242,9 @@ def parse_dxf(filepath: str) -> dict:
                 "start": [round(s.x, 1), round(s.y, 1)],
                 "end": [round(end.x, 1), round(end.y, 1)],
                 "length": round(length, 1),
+                "beam_height": None,
+                "beam_width": None,
+                "annotations": [],
             })
     for e in msp.query("LWPOLYLINE"):
         if e.dxf.layer == "BS-梁":
@@ -250,6 +253,9 @@ def parse_dxf(filepath: str) -> dict:
                 "type": "beam",
                 "layer": "BS-梁",
                 "polyline": pts,
+                "beam_height": None,
+                "beam_width": None,
+                "annotations": [],
             })
 
     # ============================================================
@@ -521,7 +527,26 @@ def _associate_annotations(result: dict):
         parsed = ann["parsed"]
         if not any(k in parsed for k in beam_keys):
             continue
-        # 记录梁标注（即使没有梁体几何也保留）
+
+        physical_beams = [b for b in result["beams"] if b.get("type") == "beam"]
+        ax, ay = ann["position"]
+        best_beam = None
+        best_dist = float("inf")
+        for beam in physical_beams:
+            dist = _distance_to_beam((ax, ay), beam)
+            if dist < best_dist:
+                best_dist = dist
+                best_beam = beam
+
+        if best_beam and best_dist < 3000:
+            if parsed.get("beam_height"):
+                best_beam["beam_height"] = parsed["beam_height"][0]
+            if parsed.get("beam_width"):
+                best_beam["beam_width"] = parsed["beam_width"][0]
+            best_beam.setdefault("annotations", []).append(ann["raw_texts"][0])
+            continue
+
+        # 没有可关联梁几何时仍保留原始梁标注，方便排查 CAD。
         for k in beam_keys:
             if parsed.get(k):
                 result["beams"].append({
@@ -564,6 +589,33 @@ def _distance_to_bbox_or_position(point: tuple, item: dict) -> float:
 
     dx, dy = item["position"]
     return math.hypot(px - dx, py - dy)
+
+
+def _distance_to_beam(point: tuple, beam: dict) -> float:
+    px, py = point
+    if beam.get("start") and beam.get("end"):
+        x1, y1 = beam["start"]
+        x2, y2 = beam["end"]
+        dx = x2 - x1
+        dy = y2 - y1
+        length_sq = dx * dx + dy * dy
+        if length_sq == 0:
+            return math.hypot(px - x1, py - y1)
+        t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / length_sq))
+        nx = x1 + t * dx
+        ny = y1 + t * dy
+        return math.hypot(px - nx, py - ny)
+
+    pts = beam.get("polyline") or []
+    if pts:
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+        dx = max(x0 - px, 0, px - x1)
+        dy = max(y0 - py, 0, py - y1)
+        return math.hypot(dx, dy)
+
+    return float("inf")
 
 
 def main():

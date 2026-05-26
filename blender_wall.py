@@ -548,6 +548,47 @@ def create_door_header_boxes(doors, wall_height, mat, collection):
     return objects
 
 
+def create_beam_objects(beams, mat, collection):
+    objects = []
+    for i, beam in enumerate(beams):
+        if beam.get("type") != "beam":
+            continue
+
+        beam_height = beam.get("beam_height")
+        if beam_height is None or beam_height <= 0:
+            print(f"梁{i}: 跳过，缺少梁高")
+            continue
+
+        beam_width = beam.get("beam_width") or 240
+        obj = None
+        if beam.get("start") and beam.get("end"):
+            obj = create_wall_box(
+                beam["start"],
+                beam["end"],
+                beam_width,
+                beam_height,
+                f"梁{i:03d}",
+                mat,
+            )
+        elif beam.get("polyline"):
+            pts = [(p[0], p[1]) for p in beam["polyline"]]
+            if len(pts) >= 3:
+                if pts[0] != pts[-1]:
+                    pts.append(pts[0])
+                obj = create_extruded_polygon(pts, beam_height, f"梁{i:03d}", mat)
+
+        if not obj:
+            print(f"梁{i}: 跳过，缺少可建模几何")
+            continue
+
+        collection.objects.link(obj)
+        obj.scale = (0.001, 0.001, 0.001)
+        objects.append(obj)
+        print(f"梁{i}: 梁高{beam_height}mm, 梁宽{beam_width}mm")
+
+    return objects
+
+
 def setup_scene():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
@@ -574,6 +615,8 @@ def main():
     mat_struct.diffuse_color = (0.4, 0.4, 0.4, 1.0)
     mat_demo = bpy.data.materials.new("可拆墙")
     mat_demo.diffuse_color = (0.7, 0.7, 0.7, 1.0)
+    mat_beam = bpy.data.materials.new("梁")
+    mat_beam.diffuse_color = (0.55, 0.55, 0.55, 1.0)
 
     heights = data.get("ceiling_heights", [2800])
     avg_h = sum(heights) / len(heights)
@@ -657,6 +700,14 @@ def main():
     )
     total += len(door_headers)
     print(f"门洞门头墙: 补{len(door_headers)}块")
+
+    beam_objects = create_beam_objects(
+        data.get("beams", []),
+        mat_beam,
+        collection,
+    )
+    total += len(beam_objects)
+    print(f"梁: 建模{len(beam_objects)}块")
 
     # 缩放 mm→m
     bpy.ops.object.select_all(action='SELECT')
