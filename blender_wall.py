@@ -1055,16 +1055,8 @@ def main():
     total += len(beam_objects)
     print(f"梁: 建模{len(beam_objects)}块")
 
-    ceiling_drop_objects = create_ceiling_drop_boxes(
-        ceiling_markers,
-        avg_h,
-        wall_objects,
-        mat_model,
-        collection,
-        ceiling_footprints_from_walls_and_beams(data),
-    )
-    total += len(ceiling_drop_objects)
-    print(f"层高块: 建模{len(ceiling_drop_objects)}块")
+    ceiling_drop_objects = []
+    print("层高块: 暂停生成")
 
     # 缩放 mm→m
     bpy.ops.object.select_all(action='SELECT')
