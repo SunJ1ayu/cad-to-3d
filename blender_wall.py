@@ -9,7 +9,7 @@ import bmesh
 import json
 import sys
 import math
-from collections import defaultdict
+from collections import defaultdict, deque
 
 
 def load_json(filepath):
@@ -873,6 +873,85 @@ def ceiling_footprints_from_walls_and_beams(data):
     ]
 
 
+def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
+    """从已建好的墙/梁实体中找内部空腔，返回 mm 单位矩形 footprint。"""
+    bboxes = []
+    for obj in blocker_objects:
+        if obj.type != "MESH":
+            continue
+        x0, y0, x1, y1 = object_bbox_xy(obj)
+        if x1 - x0 <= 0 or y1 - y0 <= 0:
+            continue
+        bboxes.append((x0, y0, x1, y1))
+    if not bboxes:
+        return []
+
+    xs = sorted({round(value, 6) for bbox in bboxes for value in (bbox[0], bbox[2])})
+    ys = sorted({round(value, 6) for bbox in bboxes for value in (bbox[1], bbox[3])})
+    if len(xs) < 2 or len(ys) < 2:
+        return []
+
+    def is_blocked(cx, cy):
+        return any(
+            x0 + 1e-6 < cx < x1 - 1e-6 and y0 + 1e-6 < cy < y1 - 1e-6
+            for x0, y0, x1, y1 in bboxes
+        )
+
+    width = len(xs) - 1
+    height = len(ys) - 1
+    free = set()
+    for i in range(width):
+        for j in range(height):
+            cell_width = xs[i + 1] - xs[i]
+            cell_height = ys[j + 1] - ys[j]
+            if cell_width < 0.05 or cell_height < 0.05:
+                continue
+            cx = (xs[i] + xs[i + 1]) / 2
+            cy = (ys[j] + ys[j + 1]) / 2
+            if not is_blocked(cx, cy):
+                free.add((i, j))
+
+    seen = set()
+    footprints = []
+    for cell in list(free):
+        if cell in seen:
+            continue
+        queue = deque([cell])
+        seen.add(cell)
+        component = []
+        touches_boundary = False
+        while queue:
+            i, j = queue.popleft()
+            component.append((i, j))
+            if i == 0 or j == 0 or i == width - 1 or j == height - 1:
+                touches_boundary = True
+            for neighbor in ((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)):
+                if neighbor in free and neighbor not in seen:
+                    seen.add(neighbor)
+                    queue.append(neighbor)
+
+        if touches_boundary:
+            continue
+
+        area = sum((xs[i + 1] - xs[i]) * (ys[j + 1] - ys[j]) for i, j in component)
+        if area < min_area_sqm:
+            continue
+
+        x0 = min(xs[i] for i, _ in component)
+        y0 = min(ys[j] for _, j in component)
+        x1 = max(xs[i + 1] for i, _ in component)
+        y1 = max(ys[j + 1] for _, j in component)
+        footprints.append([
+            (x0 * 1000, y0 * 1000),
+            (x1 * 1000, y0 * 1000),
+            (x1 * 1000, y1 * 1000),
+            (x0 * 1000, y1 * 1000),
+            (x0 * 1000, y0 * 1000),
+        ])
+
+    return sorted(footprints, key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]))
+
+
 def merge_collinear_beam_lines(beams, coord_tol=5, gap_tol=260):
     groups = defaultdict(list)
     passthrough = []
@@ -1390,7 +1469,7 @@ def main():
     total += len(beam_objects)
     print(f"梁: 建模{len(beam_objects)}块")
 
-    ceiling_footprints = ceiling_footprints_from_walls_and_beams(data)
+    ceiling_footprints = ceiling_footprints_from_model_objects(wall_objects + beam_objects)
     ceiling_drop_objects = create_ceiling_drop_boxes(
         ceiling_markers,
         avg_h,
