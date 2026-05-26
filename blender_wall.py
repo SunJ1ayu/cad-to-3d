@@ -548,34 +548,53 @@ def create_door_header_boxes(doors, wall_height, mat, collection):
     return objects
 
 
-def create_beam_objects(beams, mat, collection):
+def create_beam_objects(beams, wall_height, mat, collection):
     objects = []
     for i, beam in enumerate(beams):
         if beam.get("type") != "beam":
             continue
 
-        beam_height = beam.get("beam_height")
-        if beam_height is None or beam_height <= 0:
-            print(f"梁{i}: 跳过，缺少梁高")
+        beam_bottom = beam.get("beam_height")
+        if beam_bottom is None or beam_bottom <= 0:
+            print(f"梁{i}: 跳过，缺少梁底标高")
+            continue
+
+        beam_depth = wall_height - beam_bottom
+        if beam_depth <= 20:
+            print(f"梁{i}: 跳过，梁底标高{beam_bottom}mm已到顶")
             continue
 
         beam_width = beam.get("beam_width") or 240
         obj = None
         if beam.get("start") and beam.get("end"):
-            obj = create_wall_box(
-                beam["start"],
-                beam["end"],
-                beam_width,
-                beam_height,
-                f"梁{i:03d}",
-                mat,
-            )
+            sx, sy = beam["start"]
+            ex, ey = beam["end"]
+            dx = ex - sx
+            dy = ey - sy
+            length = math.hypot(dx, dy)
+            if length > 0:
+                axis_x = (dx / length, dy / length)
+                axis_y = (-axis_x[1], axis_x[0])
+                obj = create_oriented_box(
+                    ((sx + ex) / 2, (sy + ey) / 2, beam_bottom + beam_depth / 2),
+                    axis_x,
+                    axis_y,
+                    length,
+                    beam_width,
+                    beam_depth,
+                    f"梁{i:03d}",
+                )
+                obj.data.materials.append(mat)
         elif beam.get("polyline"):
             pts = [(p[0], p[1]) for p in beam["polyline"]]
             if len(pts) >= 3:
                 if pts[0] != pts[-1]:
                     pts.append(pts[0])
-                obj = create_extruded_polygon(pts, beam_height, f"梁{i:03d}", mat)
+                obj = create_extruded_polygon(pts, beam_depth, f"梁{i:03d}", mat)
+                if obj:
+                    for vert in obj.data.vertices:
+                        vert.co.z += beam_bottom
+                    obj.data.update()
 
         if not obj:
             print(f"梁{i}: 跳过，缺少可建模几何")
@@ -584,7 +603,9 @@ def create_beam_objects(beams, mat, collection):
         collection.objects.link(obj)
         obj.scale = (0.001, 0.001, 0.001)
         objects.append(obj)
-        print(f"梁{i}: 梁高{beam_height}mm, 梁宽{beam_width}mm")
+        print(
+            f"梁{i}: 梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm, 梁宽{beam_width}mm"
+        )
 
     return objects
 
@@ -699,6 +720,7 @@ def main():
 
     beam_objects = create_beam_objects(
         data.get("beams", []),
+        avg_h,
         mat_model,
         collection,
     )
