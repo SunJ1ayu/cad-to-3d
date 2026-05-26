@@ -548,7 +548,7 @@ def create_door_header_boxes(doors, wall_height, mat, collection):
     return objects
 
 
-def create_beam_objects(beams, wall_height, mat, collection):
+def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
     objects = []
 
     line_beams = [
@@ -560,13 +560,51 @@ def create_beam_objects(beams, wall_height, mat, collection):
     pairs, unpaired = pair_parallel_walls(beam_lines, min_thickness=30, max_thickness=600)
     used_line_indices = set()
 
+    def distance_point_to_line(point, line):
+        px, py = point
+        x1, y1 = line["start"]
+        x2, y2 = line["end"]
+        dx = x2 - x1
+        dy = y2 - y1
+        length_sq = dx * dx + dy * dy
+        if length_sq == 0:
+            return math.hypot(px - x1, py - y1)
+        t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / length_sq))
+        nx = x1 + t * dx
+        ny = y1 + t * dy
+        return math.hypot(px - nx, py - ny)
+
+    def distance_between_lines(a, b):
+        points_a = [a["start"], a["end"]]
+        points_b = [b["start"], b["end"]]
+        return min(
+            min(distance_point_to_line(p, b) for p in points_a),
+            min(distance_point_to_line(p, a) for p in points_b),
+        )
+
     def beam_bottom_for(items):
         bottoms = [
             item.get("beam_height")
             for item in items
             if item.get("beam_height") is not None and item.get("beam_height") > 0
         ]
-        return min(bottoms) if bottoms else None
+        if bottoms:
+            return min(bottoms)
+
+        connected = []
+        nearby = []
+        for candidate in beam_lines:
+            height = candidate.get("beam_height")
+            if height is None or height <= 0:
+                continue
+            distances = [distance_between_lines(item, candidate) for item in items]
+            if any(distance <= 20 for distance in distances):
+                connected.append(height)
+            elif any(distance <= 260 for distance in distances):
+                nearby.append(height)
+        if connected:
+            return min(connected)
+        return min(nearby) if nearby else None
 
     def beam_width_for(items):
         widths = [
@@ -596,6 +634,7 @@ def create_beam_objects(beams, wall_height, mat, collection):
         obj.data.update()
         collection.objects.link(obj)
         obj.scale = (0.001, 0.001, 0.001)
+        snap_box_xy_to_walls(obj, wall_objects, tol=0.15)
         objects.append(obj)
         width_label = f", 梁宽{beam_width}mm" if beam_width else ""
         print(f"{name}: 梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm{width_label}")
@@ -755,6 +794,7 @@ def main():
         avg_h,
         mat_model,
         collection,
+        wall_objects,
     )
     total += len(beam_objects)
     print(f"梁: 建模{len(beam_objects)}块")
