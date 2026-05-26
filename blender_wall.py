@@ -150,7 +150,8 @@ def make_segment(w):
     }
 
 
-def pair_to_polygon(a, b):
+def pair_to_polygon(a, b, blockers=None):
+    blockers = blockers or []
     ux, uy = a["dir"]
     if ux * b["dir"][0] + uy * b["dir"][1] < 0:
         ux, uy = -ux, -uy
@@ -167,8 +168,13 @@ def pair_to_polygon(a, b):
         t0, t1 = min(ts), max(ts)
     d0, d1 = min(ds), max(ds)
     cap_extend = (d1 - d0) / 2
-    t0 -= cap_extend
-    t1 += cap_extend
+    mid_d = (d0 + d1) / 2
+    start_probe = (ux * (t0 - cap_extend) + nx * mid_d, uy * (t0 - cap_extend) + ny * mid_d)
+    end_probe = (ux * (t1 + cap_extend) + nx * mid_d, uy * (t1 + cap_extend) + ny * mid_d)
+    if not any(point_in_polygon(start_probe, poly) for poly in blockers):
+        t0 -= cap_extend
+    if not any(point_in_polygon(end_probe, poly) for poly in blockers):
+        t1 += cap_extend
     return [
         (ux * t0 + nx * d0, uy * t0 + ny * d0),
         (ux * t1 + nx * d0, uy * t1 + ny * d0),
@@ -327,7 +333,7 @@ def main():
 
         # 2. 平行双边线 → 一堵墙
         for i, (a_idx, b_idx) in enumerate(pairs):
-            poly = pair_to_polygon(make_segment(remaining[a_idx]), make_segment(remaining[b_idx]))
+            poly = pair_to_polygon(make_segment(remaining[a_idx]), make_segment(remaining[b_idx]), polys)
             obj = create_extruded_polygon(poly, avg_h, f"{label}_配对{i:03d}", mat)
             if obj:
                 collection.objects.link(obj)
