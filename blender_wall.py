@@ -479,7 +479,64 @@ def build_ceiling_resolver(data, fallback_height):
     return ceiling_at, markers
 
 
-def apply_window_openings(wall_objects, windows, collection, wall_height, mat, ceiling_at):
+def create_ceiling_drop_boxes(markers, wall_height, wall_objects, mat, collection):
+    if not markers:
+        return []
+
+    building_bbox = None
+    for wall in wall_objects:
+        bbox = object_bbox_xy(wall)
+        if building_bbox is None:
+            building_bbox = list(bbox)
+        else:
+            building_bbox[0] = min(building_bbox[0], bbox[0])
+            building_bbox[1] = min(building_bbox[1], bbox[1])
+            building_bbox[2] = max(building_bbox[2], bbox[2])
+            building_bbox[3] = max(building_bbox[3], bbox[3])
+    if building_bbox is None:
+        return []
+
+    xs = sorted({round(marker[0] * 0.001, 6) for marker in markers})
+    ys = sorted({round(marker[1] * 0.001, 6) for marker in markers})
+
+    def interval_bounds(values, value, lower, upper):
+        idx = values.index(round(value, 6))
+        start = lower if idx == 0 else (values[idx - 1] + value) / 2
+        end = upper if idx == len(values) - 1 else (value + values[idx + 1]) / 2
+        return start, end
+
+    objects = []
+    for i, (x_mm, y_mm, ceiling_height) in enumerate(markers):
+        if ceiling_height >= wall_height:
+            print(f"层高块{i}: 跳过，CH={ceiling_height}mm 已到统一墙高")
+            continue
+
+        x = x_mm * 0.001
+        y = y_mm * 0.001
+        x0, x1 = interval_bounds(xs, x, building_bbox[0], building_bbox[2])
+        y0, y1 = interval_bounds(ys, y, building_bbox[1], building_bbox[3])
+        size_x = max((x1 - x0) * 1000, 1)
+        size_y = max((y1 - y0) * 1000, 1)
+        size_z = wall_height - ceiling_height
+        obj = create_oriented_box(
+            ((x0 + x1) * 500, (y0 + y1) * 500, ceiling_height + size_z / 2),
+            (1, 0),
+            (0, 1),
+            size_x,
+            size_y,
+            size_z,
+            f"层高块{i:03d}",
+        )
+        obj.data.materials.append(mat)
+        collection.objects.link(obj)
+        obj.scale = (0.001, 0.001, 0.001)
+        objects.append(obj)
+        print(f"层高块{i}: CH={ceiling_height}mm, 补高{size_z}mm")
+
+    return objects
+
+
+def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
     cutters = []
     applied = 0
     infill_objects = []
@@ -496,7 +553,6 @@ def apply_window_openings(wall_objects, windows, collection, wall_height, mat, c
         axis_x = (math.cos(angle), math.sin(angle))
         axis_y = (-axis_x[1], axis_x[0])
         x, y = win["position"]
-        local_wall_height = ceiling_at((x, y))
         cutter = create_oriented_box(
             (x, y, sill + window_height / 2),
             axis_x,
@@ -534,21 +590,21 @@ def apply_window_openings(wall_objects, windows, collection, wall_height, mat, c
         applied += hit
         print(f"窗洞{i}: 长{length}mm, 窗台{sill}mm, 窗高{window_height}mm, 命中{hit}个墙体")
         if hit == 0:
-            boxes = create_window_infill_boxes(win, local_wall_height, mat)
+            boxes = create_window_infill_boxes(win, wall_height, mat)
             for j, box in enumerate(boxes):
                 box.name = f"窗洞{i:03d}_{box.name}_{j:03d}"
                 collection.objects.link(box)
                 box.scale = (0.001, 0.001, 0.001)
                 snap_box_xy_to_walls(box, wall_objects)
                 infill_objects.append(box)
-            print(f"窗洞{i}: 未命中墙体，局部层高{local_wall_height}mm，补{len(boxes)}块窗上下墙")
+            print(f"窗洞{i}: 未命中墙体，补{len(boxes)}块窗上下墙")
 
     for cutter in cutters:
         bpy.data.objects.remove(cutter, do_unlink=True)
     return applied, infill_objects
 
 
-def create_door_header_boxes(doors, mat, collection, ceiling_at):
+def create_door_header_boxes(doors, wall_height, mat, collection):
     objects = []
     for i, door in enumerate(doors):
         door_height = door.get("door_height")
@@ -557,13 +613,12 @@ def create_door_header_boxes(doors, mat, collection, ceiling_at):
             print(f"门洞{i}: 跳过，缺少门高或bbox")
             continue
 
-        x0, y0, x1, y1 = bbox
-        local_wall_height = ceiling_at(bbox_center(bbox))
-        header_height = local_wall_height - door_height
+        header_height = wall_height - door_height
         if header_height <= 20:
-            print(f"门洞{i}: 跳过，门高已到局部顶")
+            print(f"门洞{i}: 跳过，门高已到顶")
             continue
 
+        x0, y0, x1, y1 = bbox
         sx = x1 - x0
         sy = y1 - y0
         cx = (x0 + x1) / 2
@@ -595,11 +650,11 @@ def create_door_header_boxes(doors, mat, collection, ceiling_at):
         obj.scale = (0.001, 0.001, 0.001)
         snap_box_xy_to_walls(obj, [wall for wall in bpy.data.objects if wall.name.startswith(("承重墙", "可拆墙"))])
         objects.append(obj)
-        print(f"门洞{i}: 门高{door_height}mm, 局部层高{local_wall_height}mm, 补门头墙{header_height:.0f}mm")
+        print(f"门洞{i}: 门高{door_height}mm, 补门头墙{header_height:.0f}mm")
     return objects
 
 
-def create_beam_objects(beams, mat, collection, wall_objects, ceiling_at):
+def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
     objects = []
 
     line_beams = [
@@ -670,10 +725,9 @@ def create_beam_objects(beams, mat, collection, wall_objects, ceiling_at):
             print(f"{name}: 跳过，缺少梁底标高")
             return None
 
-        local_wall_height = ceiling_at(polygon_center(footprint))
-        beam_depth = local_wall_height - beam_bottom
+        beam_depth = wall_height - beam_bottom
         if beam_depth <= 20:
-            print(f"{name}: 跳过，梁底标高{beam_bottom}mm已到局部顶")
+            print(f"{name}: 跳过，梁底标高{beam_bottom}mm已到顶")
             return None
 
         obj = create_extruded_polygon(footprint, beam_depth, name, mat)
@@ -694,7 +748,7 @@ def create_beam_objects(beams, mat, collection, wall_objects, ceiling_at):
         )
         objects.append(obj)
         width_label = f", 梁宽{beam_width}mm" if beam_width else ""
-        print(f"{name}: 梁底标高{beam_bottom}mm, 局部层高{local_wall_height}mm, 梁厚{beam_depth:.0f}mm{width_label}")
+        print(f"{name}: 梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm{width_label}")
         return obj
 
     for pair_index, (a_idx, b_idx) in enumerate(pairs):
@@ -764,9 +818,9 @@ def main():
     mat_model.diffuse_color = (0.65, 0.65, 0.65, 1.0)
 
     heights = data.get("ceiling_heights", [2800])
-    avg_h = round(sum(heights) / len(heights))
+    avg_h = round(max(heights))
     ceiling_at, ceiling_markers = build_ceiling_resolver(data, avg_h)
-    print(f"默认层高: {avg_h}mm，局部层高标注: {len(ceiling_markers)}个")
+    print(f"统一墙高: {avg_h}mm，局部层高标注: {len(ceiling_markers)}个")
 
     collection = bpy.data.collections.new("建筑构件")
     bpy.context.scene.collection.children.link(collection)
@@ -800,8 +854,7 @@ def main():
         for i, poly in enumerate(polys):
             if len(poly) < 3:
                 continue
-            local_h = ceiling_at(polygon_center(poly))
-            obj = create_extruded_polygon(poly, local_h, f"{label}_围合{i:03d}", mat)
+            obj = create_extruded_polygon(poly, avg_h, f"{label}_围合{i:03d}", mat)
             if obj:
                 collection.objects.link(obj)
                 obj.scale = (0.001, 0.001, 0.001)
@@ -811,8 +864,7 @@ def main():
         # 2. 平行双边线 → 一堵墙
         for i, (a_idx, b_idx) in enumerate(pairs):
             poly = pair_to_polygon(make_segment(remaining[a_idx]), make_segment(remaining[b_idx]), polys)
-            local_h = ceiling_at(polygon_center(poly))
-            obj = create_extruded_polygon(poly, local_h, f"{label}_配对{i:03d}", mat)
+            obj = create_extruded_polygon(poly, avg_h, f"{label}_配对{i:03d}", mat)
             if obj:
                 collection.objects.link(obj)
                 obj.scale = (0.001, 0.001, 0.001)
@@ -823,8 +875,7 @@ def main():
         for idx in fallback:
             w = remaining[idx]
             original_idx = original_indices[idx]
-            local_h = ceiling_at(line_midpoint(w))
-            obj = create_wall_box(w["start"], w["end"], thick, local_h, f"{label}_兜底_{original_idx:03d}", mat)
+            obj = create_wall_box(w["start"], w["end"], thick, avg_h, f"{label}_兜底_{original_idx:03d}", mat)
             if obj:
                 collection.objects.link(obj)
                 obj.scale = (0.001, 0.001, 0.001)
@@ -837,29 +888,38 @@ def main():
         collection,
         avg_h,
         mat_model,
-        ceiling_at,
     )
     total += len(window_infill)
     print(f"窗洞布尔: 命中{window_hits}次，补窗上下墙{len(window_infill)}块")
 
     door_headers = create_door_header_boxes(
         data.get("doors", []),
+        avg_h,
         mat_model,
         collection,
-        ceiling_at,
     )
     total += len(door_headers)
     print(f"门洞门头墙: 补{len(door_headers)}块")
 
     beam_objects = create_beam_objects(
         data.get("beams", []),
+        avg_h,
         mat_model,
         collection,
         wall_objects,
-        ceiling_at,
     )
     total += len(beam_objects)
     print(f"梁: 建模{len(beam_objects)}块")
+
+    ceiling_drop_objects = create_ceiling_drop_boxes(
+        ceiling_markers,
+        avg_h,
+        wall_objects,
+        mat_model,
+        collection,
+    )
+    total += len(ceiling_drop_objects)
+    print(f"层高块: 建模{len(ceiling_drop_objects)}块")
 
     # 缩放 mm→m
     bpy.ops.object.select_all(action='SELECT')
