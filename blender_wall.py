@@ -190,7 +190,7 @@ def make_segment(w):
     }
 
 
-def pair_to_polygon(a, b, blockers=None):
+def pair_to_polygon(a, b, blockers=None, extend_caps=True):
     blockers = blockers or []
     ux, uy = a["dir"]
     if ux * b["dir"][0] + uy * b["dir"][1] < 0:
@@ -207,14 +207,15 @@ def pair_to_polygon(a, b, blockers=None):
     if t1 <= t0:
         t0, t1 = min(ts), max(ts)
     d0, d1 = min(ds), max(ds)
-    cap_extend = (d1 - d0) / 2
-    mid_d = (d0 + d1) / 2
-    start_probe = (ux * (t0 - cap_extend) + nx * mid_d, uy * (t0 - cap_extend) + ny * mid_d)
-    end_probe = (ux * (t1 + cap_extend) + nx * mid_d, uy * (t1 + cap_extend) + ny * mid_d)
-    if not any(point_in_polygon(start_probe, poly) for poly in blockers):
-        t0 -= cap_extend
-    if not any(point_in_polygon(end_probe, poly) for poly in blockers):
-        t1 += cap_extend
+    if extend_caps:
+        cap_extend = (d1 - d0) / 2
+        mid_d = (d0 + d1) / 2
+        start_probe = (ux * (t0 - cap_extend) + nx * mid_d, uy * (t0 - cap_extend) + ny * mid_d)
+        end_probe = (ux * (t1 + cap_extend) + nx * mid_d, uy * (t1 + cap_extend) + ny * mid_d)
+        if not any(point_in_polygon(start_probe, poly) for poly in blockers):
+            t0 -= cap_extend
+        if not any(point_in_polygon(end_probe, poly) for poly in blockers):
+            t1 += cap_extend
     return [
         (ux * t0 + nx * d0, uy * t0 + ny * d0),
         (ux * t1 + nx * d0, uy * t1 + ny * d0),
@@ -389,7 +390,7 @@ def intervals_overlap(a0, a1, b0, b1, tol=0.03):
     return min(a1, b1) + tol >= max(a0, b0)
 
 
-def snap_box_xy_to_walls(obj, wall_objects, tol=0.03):
+def snap_box_xy_to_walls(obj, wall_objects, tol=0.03, constrain_bbox=None):
     bpy.context.view_layer.update()
     bbox = object_bbox_xy(obj)
     x0, y0, x1, y1 = bbox
@@ -415,6 +416,13 @@ def snap_box_xy_to_walls(obj, wall_objects, tol=0.03):
     if targets == {"x0": x0, "y0": y0, "x1": x1, "y1": y1}:
         return
 
+    if constrain_bbox:
+        cx0, cy0, cx1, cy1 = constrain_bbox
+        targets["x0"] = max(targets["x0"], cx0)
+        targets["y0"] = max(targets["y0"], cy0)
+        targets["x1"] = min(targets["x1"], cx1)
+        targets["y1"] = min(targets["y1"], cy1)
+
     sx = obj.scale.x if obj.scale.x else 1
     sy = obj.scale.y if obj.scale.y else 1
     for vert in obj.data.vertices:
@@ -429,6 +437,12 @@ def snap_box_xy_to_walls(obj, wall_objects, tol=0.03):
         elif abs(world_y - y1) < 0.001:
             vert.co.y = targets["y1"] / sy
     obj.data.update()
+
+
+def bbox_from_xy_points(points, scale=1):
+    xs = [p[0] * scale for p in points]
+    ys = [p[1] * scale for p in points]
+    return min(xs), min(ys), max(xs), max(ys)
 
 
 def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
@@ -634,7 +648,12 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
         obj.data.update()
         collection.objects.link(obj)
         obj.scale = (0.001, 0.001, 0.001)
-        snap_box_xy_to_walls(obj, wall_objects, tol=0.15)
+        snap_box_xy_to_walls(
+            obj,
+            wall_objects,
+            tol=0.03,
+            constrain_bbox=bbox_from_xy_points(footprint[:-1], scale=0.001),
+        )
         objects.append(obj)
         width_label = f", 梁宽{beam_width}mm" if beam_width else ""
         print(f"{name}: 梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm{width_label}")
@@ -644,7 +663,7 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
         used_line_indices.update((a_idx, b_idx))
         _, a = line_beams[a_idx]
         _, b = line_beams[b_idx]
-        footprint = pair_to_polygon(make_segment(a), make_segment(b))
+        footprint = pair_to_polygon(make_segment(a), make_segment(b), extend_caps=False)
         beam_bottom = beam_bottom_for([a, b])
         beam_width = beam_width_for([a, b])
         add_beam_object(f"梁{pair_index:03d}", footprint, beam_bottom, beam_width)
