@@ -106,6 +106,16 @@ def parse_dxf(filepath: str) -> dict:
             result["windows"].append(win)
             window_blocks[name] = win
 
+    window_lines = []
+    for e in msp.query("LINE"):
+        if e.dxf.layer == "BS-窗":
+            s, end = e.dxf.start, e.dxf.end
+            window_lines.append({
+                "start": (round(s.x, 1), round(s.y, 1)),
+                "end": (round(end.x, 1), round(end.y, 1)),
+            })
+    result["windows"].extend(_pair_lines_to_window_openings(window_lines))
+
     # ============================================================
     # 3. 门 (FF-门) - INSERT 块引用 或 直接画的 LWPOLYLINE/ARC
     # ============================================================
@@ -485,6 +495,58 @@ def _pair_lines_to_door_openings(lines: list) -> list:
     return openings
 
 
+def _pair_lines_to_window_openings(lines: list) -> list:
+    infos = [_line_info(line) for line in lines]
+    candidates = []
+    for i, a in enumerate(infos):
+        if not a:
+            continue
+        for j in range(i + 1, len(infos)):
+            b = infos[j]
+            if not b:
+                continue
+            dot = abs(a["dir"][0] * b["dir"][0] + a["dir"][1] * b["dir"][1])
+            if dot < 0.996:
+                continue
+            ux, uy = a["dir"]
+            nx, ny = a["normal"]
+            ai = sorted([p[0] * ux + p[1] * uy for p in a["points"]])
+            bi = sorted([p[0] * ux + p[1] * uy for p in b["points"]])
+            overlap = min(ai[1], bi[1]) - max(ai[0], bi[0])
+            distance = abs((b["mid"][0] - a["mid"][0]) * nx + (b["mid"][1] - a["mid"][1]) * ny)
+            if overlap < 400 or not (80 <= distance <= 500):
+                continue
+            candidates.append((distance - overlap * 0.001, i, j))
+
+    used = set()
+    openings = []
+    for _, i, j in sorted(candidates):
+        if i in used or j in used:
+            continue
+        used.add(i)
+        used.add(j)
+        pts = infos[i]["points"] + infos[j]["points"]
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        ux, uy = infos[i]["dir"]
+        rotation = round(math.degrees(math.atan2(uy, ux)), 1)
+        openings.append({
+            "type": "window",
+            "layer": "BS-窗",
+            "representation": "line_pair",
+            "position": [round(sum(xs) / len(xs), 1), round(sum(ys) / len(ys), 1)],
+            "bbox": [min(xs), min(ys), max(xs), max(ys)],
+            "opening_length": round(max(max(xs) - min(xs), max(ys) - min(ys)), 1),
+            "frame_width": round(min(max(xs) - min(xs), max(ys) - min(ys)), 1),
+            "rotation": rotation,
+            "sill_height": None,
+            "window_height": None,
+            "annotations": [],
+            "points": pts,
+        })
+    return openings
+
+
 def _associate_annotations(result: dict):
     """将 SH-文字 标注关联到最近的窗户/门
     只关联窗相关标注（H1窗台、H2窗、H1窗），其他标注（CH、H=、W=）保留原文不强制关联。
@@ -519,6 +581,8 @@ def _associate_annotations(result: dict):
                 best_win["window_height"] = parsed["window_height"][0]
             elif parsed.get("window_height_1") and best_win.get("window_height") is None:
                 best_win["window_height"] = parsed["window_height_1"][0]
+                if best_win.get("sill_height") is None:
+                    best_win["sill_height"] = 0
             best_win["annotations"].append(ann["raw_texts"][0])
 
     # 关联梁标注 (H=/W=) 到最近的梁体

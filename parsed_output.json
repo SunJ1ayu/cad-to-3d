@@ -1,6 +1,6 @@
 {
   "meta": {
-    "source_file": "/root/.openclaw/media/qqbot/downloads/新块_1779718918511_984950.dxf",
+    "source_file": "input.dxf",
     "layers": [
       "0",
       "DEFPOINTS",
@@ -1256,8 +1256,48 @@
       "window_height": 1525,
       "annotations": [
         "H2窗：1525",
-        "H1窗台：940",
+        "H1窗台：940"
+      ]
+    },
+    {
+      "type": "window",
+      "layer": "BS-窗",
+      "representation": "line_pair",
+      "position": [
+        30334.1,
+        -57392.0
+      ],
+      "bbox": [
+        29656.6,
+        -57584.5,
+        31011.6,
+        -57199.5
+      ],
+      "opening_length": 1355.0,
+      "frame_width": 385.0,
+      "rotation": 180.0,
+      "sill_height": 0,
+      "window_height": 2470,
+      "annotations": [
         "H1窗：2470"
+      ],
+      "points": [
+        [
+          31011.6,
+          -57584.5
+        ],
+        [
+          29656.6,
+          -57584.5
+        ],
+        [
+          29656.6,
+          -57199.5
+        ],
+        [
+          31011.6,
+          -57199.5
+        ]
       ]
     }
   ],

@@ -569,6 +569,7 @@ def ceiling_footprints_from_walls_and_beams(data):
         for beam in data.get("beams", [])
         if beam.get("type") == "beam" and beam.get("start") and beam.get("end")
     ]
+    beam_lines = merge_collinear_beam_lines(beam_lines)
     wall_polygons = []
     for walls in [
         [w for w in data.get("walls", []) if not w.get("demolishable")],
@@ -595,6 +596,88 @@ def ceiling_footprints_from_walls_and_beams(data):
         if len(poly) >= 4
         and not any(point_in_polygon(polygon_center(poly), blocked) for blocked in blocked_polygons)
     ]
+
+
+def merge_collinear_beam_lines(beams, coord_tol=5, gap_tol=260):
+    groups = defaultdict(list)
+    passthrough = []
+    for beam in beams:
+        if not beam.get("start") or not beam.get("end"):
+            passthrough.append(beam)
+            continue
+        sx, sy = beam["start"]
+        ex, ey = beam["end"]
+        if abs(sx - ex) <= coord_tol:
+            groups[("v", round(((sx + ex) / 2) / coord_tol))].append(beam)
+        elif abs(sy - ey) <= coord_tol:
+            groups[("h", round(((sy + ey) / 2) / coord_tol))].append(beam)
+        else:
+            passthrough.append(beam)
+
+    merged = list(passthrough)
+    for (axis, _), items in groups.items():
+        spans = []
+        for beam in items:
+            sx, sy = beam["start"]
+            ex, ey = beam["end"]
+            const = (sx + ex) / 2 if axis == "v" else (sy + ey) / 2
+            a, b = (sy, ey) if axis == "v" else (sx, ex)
+            spans.append({
+                "beam": beam,
+                "const": const,
+                "start": min(a, b),
+                "end": max(a, b),
+            })
+        spans.sort(key=lambda item: item["start"])
+
+        current = []
+        for span in spans:
+            if not current or span["start"] - max(item["end"] for item in current) <= gap_tol:
+                current.append(span)
+                continue
+            merged.append(_merge_beam_span(axis, current))
+            current = [span]
+        if current:
+            merged.append(_merge_beam_span(axis, current))
+    return merged
+
+
+def _merge_beam_span(axis, spans):
+    start = min(span["start"] for span in spans)
+    end = max(span["end"] for span in spans)
+    const = sum(span["const"] for span in spans) / len(spans)
+    source_beams = [span["beam"] for span in spans]
+    heights = [
+        beam.get("beam_height")
+        for beam in source_beams
+        if beam.get("beam_height") is not None and beam.get("beam_height") > 0
+    ]
+    widths = [
+        beam.get("beam_width")
+        for beam in source_beams
+        if beam.get("beam_width") is not None and beam.get("beam_width") > 0
+    ]
+    annotations = []
+    for beam in source_beams:
+        annotations.extend(beam.get("annotations", []))
+
+    if axis == "v":
+        start_point = [round(const, 1), round(start, 1)]
+        end_point = [round(const, 1), round(end, 1)]
+    else:
+        start_point = [round(start, 1), round(const, 1)]
+        end_point = [round(end, 1), round(const, 1)]
+
+    return {
+        "type": "beam",
+        "layer": "BS-梁",
+        "start": start_point,
+        "end": end_point,
+        "length": round(end - start, 1),
+        "beam_height": min(heights) if heights else None,
+        "beam_width": max(widths) if widths else None,
+        "annotations": annotations,
+    }
 
 
 def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
@@ -720,7 +803,7 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
 
     line_beams = [
         (i, beam)
-        for i, beam in enumerate(beams)
+        for i, beam in enumerate(merge_collinear_beam_lines(beams))
         if beam.get("type") == "beam" and beam.get("start") and beam.get("end")
     ]
     beam_lines = [beam for _, beam in line_beams]
