@@ -175,6 +175,9 @@ def pair_to_polygon(a, b):
     if t1 <= t0:
         t0, t1 = min(ts), max(ts)
     d0, d1 = min(ds), max(ds)
+    cap_extend = (d1 - d0) / 2
+    t0 -= cap_extend
+    t1 += cap_extend
     return [
         (ux * t0 + nx * d0, uy * t0 + ny * d0),
         (ux * t1 + nx * d0, uy * t1 + ny * d0),
@@ -228,6 +231,11 @@ def pair_parallel_walls(walls, min_thickness=70, max_thickness=360):
         pairs.append((i, j))
 
     return pairs, [i for i in range(len(walls)) if i not in used]
+
+
+def should_create_fallback(w, min_length=1200):
+    """短落单线多为端帽/填充辅助线，避免误生成柱状墙体。"""
+    return w.get("length", 0) >= min_length
 
 
 def create_wall_box(s, e, thickness, height, name, mat):
@@ -311,7 +319,10 @@ def main():
 
         pairs, unpaired = pair_parallel_walls(remaining)
 
-        print(f"{label}: {len(walls)}条线 → {len(polys)}个窄闭合轮廓 + {len(pairs)}组成对边线 + {len(unpaired)}条兜底")
+        fallback = [idx for idx in unpaired if should_create_fallback(remaining[idx])]
+        skipped = len(unpaired) - len(fallback)
+
+        print(f"{label}: {len(walls)}条线 → {len(polys)}个窄闭合轮廓 + {len(pairs)}组成对边线 + {len(fallback)}条兜底(跳过{skipped}条短辅助线)")
 
         # 1. 窄闭合轮廓拉伸
         for i, poly in enumerate(polys):
@@ -333,7 +344,7 @@ def main():
                 total += 1
 
         # 3. 落单线段 → box 兜底
-        for idx in unpaired:
+        for idx in fallback:
             w = remaining[idx]
             original_idx = original_indices[idx]
             obj = create_wall_box(w["start"], w["end"], thick, avg_h, f"{label}_兜底_{original_idx:03d}", mat)
