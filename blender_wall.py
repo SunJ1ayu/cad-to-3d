@@ -334,6 +334,7 @@ def create_oriented_box(center, axis_x, axis_y, size_x, size_y, size_z, name):
 
 
 def object_bbox_xy(obj):
+    bpy.context.view_layer.update()
     coords = [obj.matrix_world @ v.co for v in obj.data.vertices]
     xs = [v.x for v in coords]
     ys = [v.y for v in coords]
@@ -342,6 +343,11 @@ def object_bbox_xy(obj):
 
 def bboxes_overlap(a, b):
     return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
+
+
+def point_in_bbox_xy(point, bbox, tol=0.02):
+    x, y = point
+    return bbox[0] - tol <= x <= bbox[2] + tol and bbox[1] - tol <= y <= bbox[3] + tol
 
 
 def create_window_infill_boxes(win, height, mat):
@@ -369,7 +375,7 @@ def create_window_infill_boxes(win, height, mat):
             (x, y, center_z),
             axis_x,
             axis_y,
-            length + 20,
+            length,
             frame_width,
             box_height,
             label,
@@ -377,6 +383,52 @@ def create_window_infill_boxes(win, height, mat):
         obj.data.materials.append(mat)
         objects.append(obj)
     return objects
+
+
+def intervals_overlap(a0, a1, b0, b1, tol=0.03):
+    return min(a1, b1) + tol >= max(a0, b0)
+
+
+def snap_box_xy_to_walls(obj, wall_objects, tol=0.03):
+    bpy.context.view_layer.update()
+    bbox = object_bbox_xy(obj)
+    x0, y0, x1, y1 = bbox
+    targets = {"x0": x0, "y0": y0, "x1": x1, "y1": y1}
+    best = {key: tol for key in targets}
+
+    for wall in wall_objects:
+        wx0, wy0, wx1, wy1 = object_bbox_xy(wall)
+        for side, current, candidates, overlap in [
+            ("x0", x0, (wx0, wx1), intervals_overlap(y0, y1, wy0, wy1, tol)),
+            ("x1", x1, (wx0, wx1), intervals_overlap(y0, y1, wy0, wy1, tol)),
+            ("y0", y0, (wy0, wy1), intervals_overlap(x0, x1, wx0, wx1, tol)),
+            ("y1", y1, (wy0, wy1), intervals_overlap(x0, x1, wx0, wx1, tol)),
+        ]:
+            if not overlap:
+                continue
+            for candidate in candidates:
+                dist = abs(current - candidate)
+                if dist < best[side]:
+                    best[side] = dist
+                    targets[side] = candidate
+
+    if targets == {"x0": x0, "y0": y0, "x1": x1, "y1": y1}:
+        return
+
+    sx = obj.scale.x if obj.scale.x else 1
+    sy = obj.scale.y if obj.scale.y else 1
+    for vert in obj.data.vertices:
+        world_x = vert.co.x * sx
+        world_y = vert.co.y * sy
+        if abs(world_x - x0) < 0.001:
+            vert.co.x = targets["x0"] / sx
+        elif abs(world_x - x1) < 0.001:
+            vert.co.x = targets["x1"] / sx
+        if abs(world_y - y0) < 0.001:
+            vert.co.y = targets["y0"] / sy
+        elif abs(world_y - y1) < 0.001:
+            vert.co.y = targets["y1"] / sy
+    obj.data.update()
 
 
 def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
@@ -411,7 +463,10 @@ def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
 
         hit = 0
         for obj in wall_objects:
-            if not bboxes_overlap(object_bbox_xy(obj), cutter_bbox):
+            wall_bbox = object_bbox_xy(obj)
+            if not point_in_bbox_xy((x * 0.001, y * 0.001), wall_bbox):
+                continue
+            if not bboxes_overlap(wall_bbox, cutter_bbox):
                 continue
             modifier = obj.modifiers.new(f"窗洞_{i:03d}", "BOOLEAN")
             modifier.operation = "DIFFERENCE"
@@ -435,6 +490,7 @@ def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
                 box.name = f"窗洞{i:03d}_{box.name}_{j:03d}"
                 collection.objects.link(box)
                 box.scale = (0.001, 0.001, 0.001)
+                snap_box_xy_to_walls(box, wall_objects)
                 infill_objects.append(box)
             print(f"窗洞{i}: 未命中墙体，补{len(boxes)}块窗上下墙")
 
@@ -486,6 +542,7 @@ def create_door_header_boxes(doors, wall_height, mat, collection):
         obj.data.materials.append(mat)
         collection.objects.link(obj)
         obj.scale = (0.001, 0.001, 0.001)
+        snap_box_xy_to_walls(obj, [wall for wall in bpy.data.objects if wall.name.startswith(("承重墙", "可拆墙"))])
         objects.append(obj)
         print(f"门洞{i}: 门高{door_height}mm, 补门头墙{header_height:.0f}mm")
     return objects
