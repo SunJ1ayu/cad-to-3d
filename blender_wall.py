@@ -466,13 +466,13 @@ def create_door_header_boxes(doors, wall_height, mat, collection):
         if sx >= sy:
             axis_x = (1, 0)
             axis_y = (0, 1)
-            size_x = sx
-            size_y = max(sy, 240)
+            size_x = sx + 20
+            size_y = sy
         else:
             axis_x = (0, 1)
             axis_y = (1, 0)
-            size_x = sy
-            size_y = max(sx, 240)
+            size_x = sy + 20
+            size_y = sx
 
         obj = create_oriented_box(
             (cx, cy, cz),
