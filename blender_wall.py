@@ -18,51 +18,74 @@ def load_json(filepath):
 
 
 def find_closed_polygons(walls):
-    """找闭合多边形"""
+    """从墙线平面图中提取最小闭合面，避免复合大环重复建模。"""
     TOL = 10.0
     def key(x, y):
         return (round(x / TOL) * TOL, round(y / TOL) * TOL)
 
-    adj = defaultdict(list)
-    edges = []
-    for i, w in enumerate(walls):
+    def on_segment(p, a, b):
+        cross = (p[0] - a[0]) * (b[1] - a[1]) - (p[1] - a[1]) * (b[0] - a[0])
+        length = math.hypot(b[0] - a[0], b[1] - a[1])
+        if length == 0 or abs(cross) / length > TOL:
+            return False
+        return (
+            min(a[0], b[0]) - TOL <= p[0] <= max(a[0], b[0]) + TOL
+            and min(a[1], b[1]) - TOL <= p[1] <= max(a[1], b[1]) + TOL
+        )
+
+    raw_edges = []
+    all_nodes = set()
+    for w in walls:
         sk = key(w["start"][0], w["start"][1])
         ek = key(w["end"][0], w["end"][1])
-        adj[sk].append((ek, i))
-        adj[ek].append((sk, i))
-        edges.append((sk, ek, i))
-
-    used_global = set()
-    polygons = []
-
-    def find_cycle(start, cur, path, used):
-        if len(path) > 2 and cur == start:
-            return path[:]
-        for nxt, eidx in adj[cur]:
-            if eidx in used:
-                continue
-            if nxt == start and len(path) > 2:
-                return path + [nxt]
-            used.add(eidx)
-            result = find_cycle(start, nxt, path + [nxt], used)
-            if result:
-                return result
-            used.discard(eidx)
-        return None
-
-    for sk, ek, eidx in edges:
-        if eidx in used_global:
+        if sk == ek:
             continue
-        used_global.add(eidx)
-        cycle = find_cycle(sk, ek, [sk, ek], {eidx})
-        if cycle:
-            for k in range(len(cycle) - 1):
-                for _, ei in adj[cycle[k]]:
-                    if ei not in used_global:
-                        for _, ei2 in adj[cycle[k + 1]]:
-                            if ei == ei2:
-                                used_global.add(ei)
-            polygons.append(cycle)
+        raw_edges.append((sk, ek))
+        all_nodes.add(sk)
+        all_nodes.add(ek)
+
+    adj = defaultdict(list)
+    for sk, ek in raw_edges:
+        edge_nodes = [p for p in all_nodes if on_segment(p, sk, ek)]
+        edge_nodes.sort(key=lambda p: (p[0] - sk[0]) ** 2 + (p[1] - sk[1]) ** 2)
+        for a, b in zip(edge_nodes, edge_nodes[1:]):
+            if a == b:
+                continue
+            if b not in adj[a]:
+                adj[a].append(b)
+            if a not in adj[b]:
+                adj[b].append(a)
+
+    ordered = {}
+    for node, neighbors in adj.items():
+        ordered[node] = sorted(
+            neighbors,
+            key=lambda p: math.atan2(p[1] - node[1], p[0] - node[0]),
+        )
+
+    visited = set()
+    polygons = []
+    for start in ordered:
+        for nxt in ordered[start]:
+            if (start, nxt) in visited:
+                continue
+            face = []
+            cur, target = start, nxt
+            while (cur, target) not in visited:
+                visited.add((cur, target))
+                face.append(cur)
+                neighbors = ordered[target]
+                back_idx = neighbors.index(cur)
+                cur, target = target, neighbors[(back_idx - 1) % len(neighbors)]
+
+            if len(face) < 3:
+                continue
+            face.append(face[0])
+            area = 0
+            for k in range(len(face) - 1):
+                area += face[k][0] * face[k + 1][1] - face[k + 1][0] * face[k][1]
+            if area > 0:
+                polygons.append(face)
 
     return polygons
 
@@ -78,6 +101,23 @@ def point_in_polygon(point, poly):
             if x < xinters:
                 inside = not inside
     return inside
+
+
+def point_on_polygon_boundary(point, poly, tol=10.0):
+    x, y = point
+    for i in range(len(poly) - 1):
+        x1, y1 = poly[i]
+        x2, y2 = poly[i + 1]
+        cross = (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1)
+        length = math.hypot(x2 - x1, y2 - y1)
+        if length == 0 or abs(cross) / length > tol:
+            continue
+        if (
+            min(x1, x2) - tol <= x <= max(x1, x2) + tol
+            and min(y1, y2) - tol <= y <= max(y1, y2) + tol
+        ):
+            return True
+    return False
 
 
 def line_midpoint(w):
@@ -104,7 +144,7 @@ def is_line_covered_by_polygons(w, edge_keys, polygons):
     if line_key_for_wall(w) in edge_keys:
         return True
     mid = line_midpoint(w)
-    return any(point_in_polygon(mid, poly) for poly in polygons)
+    return any(point_in_polygon(mid, poly) or point_on_polygon_boundary(mid, poly) for poly in polygons)
 
 
 def create_extruded_polygon(poly_keys, height, name, mat):
