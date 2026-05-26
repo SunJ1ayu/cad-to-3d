@@ -342,6 +342,11 @@ def object_bbox_xy(obj):
     return min(xs), min(ys), max(xs), max(ys)
 
 
+def object_xy_coords(obj):
+    bpy.context.view_layer.update()
+    return [(co.x, co.y) for co in (obj.matrix_world @ v.co for v in obj.data.vertices)]
+
+
 def bboxes_overlap(a, b):
     return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
 
@@ -396,14 +401,23 @@ def snap_box_xy_to_walls(obj, wall_objects, tol=0.03, constrain_bbox=None):
     x0, y0, x1, y1 = bbox
     targets = {"x0": x0, "y0": y0, "x1": x1, "y1": y1}
     best = {key: tol for key in targets}
+    wall_points = []
 
     for wall in wall_objects:
         wx0, wy0, wx1, wy1 = object_bbox_xy(wall)
+        wall_points.extend(object_xy_coords(wall))
+        x_candidates = {wx0, wx1}
+        y_candidates = {wy0, wy1}
+        for px, py in object_xy_coords(wall):
+            if y0 - tol <= py <= y1 + tol:
+                x_candidates.add(px)
+            if x0 - tol <= px <= x1 + tol:
+                y_candidates.add(py)
         for side, current, candidates, overlap in [
-            ("x0", x0, (wx0, wx1), intervals_overlap(y0, y1, wy0, wy1, tol)),
-            ("x1", x1, (wx0, wx1), intervals_overlap(y0, y1, wy0, wy1, tol)),
-            ("y0", y0, (wy0, wy1), intervals_overlap(x0, x1, wx0, wx1, tol)),
-            ("y1", y1, (wy0, wy1), intervals_overlap(x0, x1, wx0, wx1, tol)),
+            ("x0", x0, x_candidates, intervals_overlap(y0, y1, wy0, wy1, tol)),
+            ("x1", x1, x_candidates, intervals_overlap(y0, y1, wy0, wy1, tol)),
+            ("y0", y0, y_candidates, intervals_overlap(x0, x1, wx0, wx1, tol)),
+            ("y1", y1, y_candidates, intervals_overlap(x0, x1, wx0, wx1, tol)),
         ]:
             if not overlap:
                 continue
@@ -412,9 +426,6 @@ def snap_box_xy_to_walls(obj, wall_objects, tol=0.03, constrain_bbox=None):
                 if dist < best[side]:
                     best[side] = dist
                     targets[side] = candidate
-
-    if targets == {"x0": x0, "y0": y0, "x1": x1, "y1": y1}:
-        return
 
     if constrain_bbox:
         cx0, cy0, cx1, cy1 = constrain_bbox
@@ -436,6 +447,22 @@ def snap_box_xy_to_walls(obj, wall_objects, tol=0.03, constrain_bbox=None):
             vert.co.y = targets["y0"] / sy
         elif abs(world_y - y1) < 0.001:
             vert.co.y = targets["y1"] / sy
+
+    # Some CAD wall footprints have slight jogs, so a single bbox side can need
+    # different snap targets at each corner.
+    for vert in obj.data.vertices:
+        world_x = vert.co.x * sx
+        world_y = vert.co.y * sy
+        nearby = [
+            (px, py)
+            for px, py in wall_points
+            if abs(world_x - px) <= tol and abs(world_y - py) <= tol
+        ]
+        if not nearby:
+            continue
+        px, py = min(nearby, key=lambda p: (world_x - p[0]) ** 2 + (world_y - p[1]) ** 2)
+        vert.co.x = px / sx
+        vert.co.y = py / sy
     obj.data.update()
 
 

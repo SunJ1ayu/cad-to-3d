@@ -598,11 +598,11 @@
       "layer": "BS-柱",
       "demolishable": false,
       "start": [
-        40556.6,
+        40551.6,
         -53079.5
       ],
       "end": [
-        40556.6,
+        40551.6,
         -51939.5
       ],
       "length": 1140.0
@@ -626,14 +626,14 @@
       "layer": "BS-柱",
       "demolishable": false,
       "start": [
-        40556.6,
+        40551.6,
         -51939.5
       ],
       "end": [
         34321.6,
         -51939.5
       ],
-      "length": 6235.0
+      "length": 6230.0
     },
     {
       "type": "wall",
@@ -938,10 +938,10 @@
         -53079.5
       ],
       "end": [
-        40556.6,
+        40551.6,
         -53079.5
       ],
-      "length": 240.0
+      "length": 235.0
     },
     {
       "type": "wall",
@@ -1521,10 +1521,10 @@
         -57584.5
       ],
       "end": [
-        32056.6,
+        31251.6,
         -57584.5
       ],
-      "length": 2265.0,
+      "length": 3070.0,
       "beam_height": 2495,
       "beam_width": 100,
       "annotations": [
@@ -1536,14 +1536,30 @@
       "type": "beam",
       "layer": "BS-梁",
       "start": [
+        34321.6,
+        -57364.5
+      ],
+      "end": [
+        31251.6,
+        -57364.5
+      ],
+      "length": 3070.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "start": [
         34551.6,
-        -55784.5
+        -55754.5
       ],
       "end": [
         34551.6,
         -62169.5
       ],
-      "length": 6385.0,
+      "length": 6415.0,
       "beam_height": 2280,
       "beam_width": 230,
       "annotations": [
@@ -1556,13 +1572,13 @@
       "layer": "BS-梁",
       "start": [
         34321.6,
-        -55784.5
+        -55754.5
       ],
       "end": [
         34321.6,
         -59159.5
       ],
-      "length": 3375.0,
+      "length": 3405.0,
       "beam_height": 2280,
       "beam_width": 100,
       "annotations": [
