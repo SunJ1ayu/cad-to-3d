@@ -911,6 +911,61 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
             if not is_blocked(cx, cy):
                 free.add((i, j))
 
+    def component_boundary(component):
+        edges = {}
+
+        def add_edge(a, b):
+            opposite = (b, a)
+            if opposite in edges:
+                del edges[opposite]
+            else:
+                edges[(a, b)] = True
+
+        for i, j in component:
+            p0 = (xs[i], ys[j])
+            p1 = (xs[i + 1], ys[j])
+            p2 = (xs[i + 1], ys[j + 1])
+            p3 = (xs[i], ys[j + 1])
+            add_edge(p0, p1)
+            add_edge(p1, p2)
+            add_edge(p2, p3)
+            add_edge(p3, p0)
+
+        outgoing = defaultdict(list)
+        for a, b in edges:
+            outgoing[a].append(b)
+
+        loops = []
+        while outgoing:
+            start = min(outgoing)
+            current = start
+            loop = [current]
+            previous = None
+            while True:
+                candidates = outgoing.get(current)
+                if not candidates:
+                    break
+                if previous is None or len(candidates) == 1:
+                    nxt = candidates.pop(0)
+                else:
+                    nxt = min(
+                        candidates,
+                        key=lambda p: math.atan2(p[1] - current[1], p[0] - current[0]),
+                    )
+                    candidates.remove(nxt)
+                if not candidates:
+                    outgoing.pop(current, None)
+                previous, current = current, nxt
+                loop.append(current)
+                if current == start:
+                    break
+            if len(loop) >= 4 and loop[0] == loop[-1]:
+                loops.append(loop)
+
+        if not loops:
+            return None
+        return max(loops, key=polygon_area)
+
     seen = set()
     footprints = []
     for cell in list(free):
@@ -937,17 +992,10 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
         if area < min_area_sqm:
             continue
 
-        x0 = min(xs[i] for i, _ in component)
-        y0 = min(ys[j] for _, j in component)
-        x1 = max(xs[i + 1] for i, _ in component)
-        y1 = max(ys[j + 1] for _, j in component)
-        footprints.append([
-            (x0 * 1000, y0 * 1000),
-            (x1 * 1000, y0 * 1000),
-            (x1 * 1000, y1 * 1000),
-            (x0 * 1000, y1 * 1000),
-            (x0 * 1000, y0 * 1000),
-        ])
+        boundary = component_boundary(component)
+        if not boundary:
+            continue
+        footprints.append([(x * 1000, y * 1000) for x, y in boundary])
 
     return sorted(footprints, key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]))
 
