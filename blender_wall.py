@@ -611,12 +611,8 @@ def main():
     data = load_json(json_path)
     setup_scene()
 
-    mat_struct = bpy.data.materials.new("承重墙")
-    mat_struct.diffuse_color = (0.4, 0.4, 0.4, 1.0)
-    mat_demo = bpy.data.materials.new("可拆墙")
-    mat_demo.diffuse_color = (0.7, 0.7, 0.7, 1.0)
-    mat_beam = bpy.data.materials.new("梁")
-    mat_beam.diffuse_color = (0.55, 0.55, 0.55, 1.0)
+    mat_model = bpy.data.materials.new("白模")
+    mat_model.diffuse_color = (0.65, 0.65, 0.65, 1.0)
 
     heights = data.get("ceiling_heights", [2800])
     avg_h = sum(heights) / len(heights)
@@ -628,8 +624,8 @@ def main():
     wall_objects = []
 
     for walls, mat, label, thick in [
-        ([w for w in data["walls"] if not w.get("demolishable")], mat_struct, "承重墙", 240),
-        ([w for w in data["walls"] if w.get("demolishable")], mat_demo, "可拆墙", 100),
+        ([w for w in data["walls"] if not w.get("demolishable")], mat_model, "承重墙", 240),
+        ([w for w in data["walls"] if w.get("demolishable")], mat_model, "可拆墙", 100),
     ]:
         polys = find_closed_polygons(walls)
         covered_keys = set()
@@ -687,7 +683,7 @@ def main():
         data.get("windows", []),
         collection,
         avg_h,
-        mat_struct,
+        mat_model,
     )
     total += len(window_infill)
     print(f"窗洞布尔: 命中{window_hits}次，补窗上下墙{len(window_infill)}块")
@@ -695,7 +691,7 @@ def main():
     door_headers = create_door_header_boxes(
         data.get("doors", []),
         avg_h,
-        mat_struct,
+        mat_model,
         collection,
     )
     total += len(door_headers)
@@ -703,7 +699,7 @@ def main():
 
     beam_objects = create_beam_objects(
         data.get("beams", []),
-        mat_beam,
+        mat_model,
         collection,
     )
     total += len(beam_objects)
