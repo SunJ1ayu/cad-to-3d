@@ -472,6 +472,11 @@ def bbox_from_xy_points(points, scale=1, margin=0):
     return min(xs) - margin, min(ys) - margin, max(xs) + margin, max(ys) + margin
 
 
+def expand_bbox(bbox, margin):
+    x0, y0, x1, y1 = bbox
+    return x0 - margin, y0 - margin, x1 + margin, y1 + margin
+
+
 def polygon_center(points):
     pts = points[:-1] if len(points) > 1 and points[0] == points[-1] else points
     if not pts:
@@ -924,6 +929,12 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
                 tol=0.06,
                 constrain_bbox=bbox_from_xy_points(footprint[:-1], scale=0.001, margin=0.06),
             )
+            snap_box_xy_to_walls(
+                obj,
+                wall_objects,
+                tol=0.06,
+                constrain_bbox=bbox_from_xy_points(footprint[:-1], scale=0.001, margin=0.06),
+            )
         objects.append(obj)
         width_label = f", 梁宽{beam_width}mm" if beam_width else ""
         print(f"{name}: 梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm{width_label}")
@@ -966,6 +977,22 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
         if pts[0] != pts[-1]:
             pts.append(pts[0])
         add_beam_object(f"梁{i:03d}", pts, beam_bottom, beam_width)
+
+    for obj in objects:
+        peers = [peer for peer in objects if peer != obj]
+        if peers:
+            snap_box_xy_to_walls(
+                obj,
+                peers,
+                tol=0.06,
+                constrain_bbox=expand_bbox(object_bbox_xy(obj), 0.06),
+            )
+        snap_box_xy_to_walls(
+            obj,
+            wall_objects,
+            tol=0.06,
+            constrain_bbox=expand_bbox(object_bbox_xy(obj), 0.06),
+        )
 
     return objects
 
