@@ -369,7 +369,7 @@ def create_window_infill_boxes(win, height, mat):
             (x, y, center_z),
             axis_x,
             axis_y,
-            length + 80,
+            length,
             frame_width,
             box_height,
             label,
