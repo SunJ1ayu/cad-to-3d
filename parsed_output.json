@@ -1545,8 +1545,10 @@
       ],
       "length": 3070.0,
       "beam_height": null,
-      "beam_width": null,
-      "annotations": []
+      "beam_width": 100,
+      "annotations": [
+        "W=100"
+      ]
     },
     {
       "type": "beam",
@@ -1598,9 +1600,12 @@
         -59394.5
       ],
       "length": 5130.0,
-      "beam_height": null,
-      "beam_width": null,
-      "annotations": []
+      "beam_height": 2280,
+      "beam_width": 230,
+      "annotations": [
+        "H=2280",
+        "W=230"
+      ]
     },
     {
       "type": "beam",
@@ -1651,9 +1656,12 @@
         -59394.5
       ],
       "length": 2775.0,
-      "beam_height": null,
-      "beam_width": null,
-      "annotations": []
+      "beam_height": 2280,
+      "beam_width": 235,
+      "annotations": [
+        "H=2280",
+        "W=235"
+      ]
     },
     {
       "type": "beam",
@@ -1759,9 +1767,12 @@
         -58759.5
       ],
       "length": 2755.0,
-      "beam_height": null,
-      "beam_width": null,
-      "annotations": []
+      "beam_height": 2295,
+      "beam_width": 95,
+      "annotations": [
+        "H=2295",
+        "W=95"
+      ]
     },
     {
       "type": "beam",
@@ -1775,9 +1786,11 @@
         -55754.5
       ],
       "length": 3380.0,
-      "beam_height": null,
+      "beam_height": 2380,
       "beam_width": null,
-      "annotations": []
+      "annotations": [
+        "H=2380"
+      ]
     },
     {
       "type": "beam",
@@ -1791,9 +1804,10 @@
         -55524.5
       ],
       "length": 3380.0,
-      "beam_height": null,
+      "beam_height": 2380,
       "beam_width": 230,
       "annotations": [
+        "H=2380",
         "W=230"
       ]
     },
@@ -1810,8 +1824,10 @@
       ],
       "length": 3345.0,
       "beam_height": null,
-      "beam_width": null,
-      "annotations": []
+      "beam_width": 230,
+      "annotations": [
+        "W=230"
+      ]
     },
     {
       "type": "beam",
@@ -1829,6 +1845,7 @@
       "beam_width": 230,
       "annotations": [
         "H=2380",
+        "W=230",
         "H=2585",
         "W=230"
       ]

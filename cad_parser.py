@@ -603,11 +603,42 @@ def _associate_annotations(result: dict):
                 best_beam = beam
 
         if best_beam and best_dist < 3000:
+            def beam_direction(beam):
+                if not (beam.get("start") and beam.get("end")):
+                    return None
+                x1, y1 = beam["start"]
+                x2, y2 = beam["end"]
+                length = math.hypot(x2 - x1, y2 - y1)
+                if length == 0:
+                    return None
+                return ((x2 - x1) / length, (y2 - y1) / length)
+
             if parsed.get("beam_height"):
                 best_beam["beam_height"] = parsed["beam_height"][0]
             if parsed.get("beam_width"):
                 best_beam["beam_width"] = parsed["beam_width"][0]
             best_beam.setdefault("annotations", []).append(ann["raw_texts"][0])
+
+            # 单线梁常只有一条边界线，标注会落在相邻梁线附近；给近距离且
+            # 尚无对应字段的梁线补同一个标注，建模阶段再用宽度兜底成梁盒。
+            best_dir = beam_direction(best_beam)
+            for beam in physical_beams:
+                if beam is best_beam:
+                    continue
+                if _distance_to_beam((ax, ay), beam) > 900:
+                    continue
+                beam_dir = beam_direction(beam)
+                if best_dir and beam_dir and abs(best_dir[0] * beam_dir[0] + best_dir[1] * beam_dir[1]) > 0.2:
+                    continue
+                changed = False
+                if parsed.get("beam_height") and beam.get("beam_height") is None:
+                    beam["beam_height"] = parsed["beam_height"][0]
+                    changed = True
+                if parsed.get("beam_width") and beam.get("beam_width") is None:
+                    beam["beam_width"] = parsed["beam_width"][0]
+                    changed = True
+                if changed:
+                    beam.setdefault("annotations", []).append(ann["raw_texts"][0])
             continue
 
         # 没有可关联梁几何时仍保留原始梁标注，方便排查 CAD。

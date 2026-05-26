@@ -954,12 +954,37 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
         if line_idx in used_line_indices:
             continue
         original_idx, beam = line_beams[line_idx]
-        if beam.get("beam_height") is None:
+        beam_bottom = beam_bottom_for([beam])
+        if beam_bottom is None:
             skipped_unpaired += 1
             print(f"梁{original_idx}: 跳过，未配对且缺少梁底标高")
             continue
-        skipped_unpaired += 1
-        print(f"梁{original_idx}: 跳过，未找到梁边界配对")
+        beam_width = beam_width_for([beam]) or 240
+        beam_depth = wall_height - beam_bottom
+        if beam_depth <= 20:
+            skipped_unpaired += 1
+            print(f"梁{original_idx}: 跳过，梁底标高{beam_bottom}mm已到顶")
+            continue
+        obj = create_wall_box(
+            beam["start"],
+            beam["end"],
+            beam_width,
+            beam_depth,
+            f"梁{original_idx:03d}",
+            mat,
+        )
+        if not obj:
+            skipped_unpaired += 1
+            print(f"梁{original_idx}: 跳过，缺少可建模几何")
+            continue
+        for vert in obj.data.vertices:
+            vert.co.z += beam_bottom
+        obj.data.update()
+        collection.objects.link(obj)
+        obj.scale = (0.001, 0.001, 0.001)
+        obj["single_line_beam_fallback"] = True
+        objects.append(obj)
+        print(f"梁{original_idx}: 未配对单线兜底，梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm, 梁宽{beam_width}mm")
 
     if skipped_unpaired:
         print(f"梁线配对: 跳过{skipped_unpaired}条未配对梁线")
@@ -979,6 +1004,8 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
         add_beam_object(f"梁{i:03d}", pts, beam_bottom, beam_width)
 
     for obj in objects:
+        if obj.get("single_line_beam_fallback"):
+            continue
         peers = [peer for peer in objects if peer != obj]
         if peers:
             snap_box_xy_to_walls(
