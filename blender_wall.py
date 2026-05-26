@@ -550,62 +550,94 @@ def create_door_header_boxes(doors, wall_height, mat, collection):
 
 def create_beam_objects(beams, wall_height, mat, collection):
     objects = []
-    for i, beam in enumerate(beams):
-        if beam.get("type") != "beam":
-            continue
 
-        beam_bottom = beam.get("beam_height")
+    line_beams = [
+        (i, beam)
+        for i, beam in enumerate(beams)
+        if beam.get("type") == "beam" and beam.get("start") and beam.get("end")
+    ]
+    beam_lines = [beam for _, beam in line_beams]
+    pairs, unpaired = pair_parallel_walls(beam_lines, min_thickness=30, max_thickness=600)
+    used_line_indices = set()
+
+    def beam_bottom_for(items):
+        bottoms = [
+            item.get("beam_height")
+            for item in items
+            if item.get("beam_height") is not None and item.get("beam_height") > 0
+        ]
+        return min(bottoms) if bottoms else None
+
+    def beam_width_for(items):
+        widths = [
+            item.get("beam_width")
+            for item in items
+            if item.get("beam_width") is not None and item.get("beam_width") > 0
+        ]
+        return max(widths) if widths else None
+
+    def add_beam_object(name, footprint, beam_bottom, beam_width):
         if beam_bottom is None or beam_bottom <= 0:
-            print(f"梁{i}: 跳过，缺少梁底标高")
-            continue
+            print(f"{name}: 跳过，缺少梁底标高")
+            return None
 
         beam_depth = wall_height - beam_bottom
         if beam_depth <= 20:
-            print(f"梁{i}: 跳过，梁底标高{beam_bottom}mm已到顶")
-            continue
+            print(f"{name}: 跳过，梁底标高{beam_bottom}mm已到顶")
+            return None
 
-        beam_width = beam.get("beam_width") or 240
-        obj = None
-        if beam.get("start") and beam.get("end"):
-            sx, sy = beam["start"]
-            ex, ey = beam["end"]
-            dx = ex - sx
-            dy = ey - sy
-            length = math.hypot(dx, dy)
-            if length > 0:
-                axis_x = (dx / length, dy / length)
-                axis_y = (-axis_x[1], axis_x[0])
-                obj = create_oriented_box(
-                    ((sx + ex) / 2, (sy + ey) / 2, beam_bottom + beam_depth / 2),
-                    axis_x,
-                    axis_y,
-                    length,
-                    beam_width,
-                    beam_depth,
-                    f"梁{i:03d}",
-                )
-                obj.data.materials.append(mat)
-        elif beam.get("polyline"):
-            pts = [(p[0], p[1]) for p in beam["polyline"]]
-            if len(pts) >= 3:
-                if pts[0] != pts[-1]:
-                    pts.append(pts[0])
-                obj = create_extruded_polygon(pts, beam_depth, f"梁{i:03d}", mat)
-                if obj:
-                    for vert in obj.data.vertices:
-                        vert.co.z += beam_bottom
-                    obj.data.update()
-
+        obj = create_extruded_polygon(footprint, beam_depth, name, mat)
         if not obj:
-            print(f"梁{i}: 跳过，缺少可建模几何")
-            continue
+            print(f"{name}: 跳过，缺少可建模几何")
+            return None
 
+        for vert in obj.data.vertices:
+            vert.co.z += beam_bottom
+        obj.data.update()
         collection.objects.link(obj)
         obj.scale = (0.001, 0.001, 0.001)
         objects.append(obj)
-        print(
-            f"梁{i}: 梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm, 梁宽{beam_width}mm"
-        )
+        width_label = f", 梁宽{beam_width}mm" if beam_width else ""
+        print(f"{name}: 梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm{width_label}")
+        return obj
+
+    for pair_index, (a_idx, b_idx) in enumerate(pairs):
+        used_line_indices.update((a_idx, b_idx))
+        _, a = line_beams[a_idx]
+        _, b = line_beams[b_idx]
+        footprint = pair_to_polygon(make_segment(a), make_segment(b))
+        beam_bottom = beam_bottom_for([a, b])
+        beam_width = beam_width_for([a, b])
+        add_beam_object(f"梁{pair_index:03d}", footprint, beam_bottom, beam_width)
+
+    skipped_unpaired = 0
+    for line_idx in unpaired:
+        if line_idx in used_line_indices:
+            continue
+        original_idx, beam = line_beams[line_idx]
+        if beam.get("beam_height") is None:
+            skipped_unpaired += 1
+            print(f"梁{original_idx}: 跳过，未配对且缺少梁底标高")
+            continue
+        skipped_unpaired += 1
+        print(f"梁{original_idx}: 跳过，未找到梁边界配对")
+
+    if skipped_unpaired:
+        print(f"梁线配对: 跳过{skipped_unpaired}条未配对梁线")
+
+    for i, beam in enumerate(beams):
+        if beam.get("type") != "beam" or not beam.get("polyline"):
+            continue
+
+        beam_bottom = beam.get("beam_height")
+        beam_width = beam.get("beam_width") or 240
+        pts = [(p[0], p[1]) for p in beam["polyline"]]
+        if len(pts) < 3:
+            print(f"梁{i}: 跳过，polyline 点数不足")
+            continue
+        if pts[0] != pts[-1]:
+            pts.append(pts[0])
+        add_beam_object(f"梁{i:03d}", pts, beam_bottom, beam_width)
 
     return objects
 
