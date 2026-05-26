@@ -315,16 +315,34 @@ def create_single_line_beam_box(s, e, thickness, height, name, mat, wall_objects
     nx = -dy / ln
     ny = dx / ln
     mid = ((s[0] + e[0]) / 2 * 0.001, (s[1] + e[1]) / 2 * 0.001)
+    endpoints = [
+        (s[0] * 0.001, s[1] * 0.001),
+        (e[0] * 0.001, e[1] * 0.001),
+    ]
 
     side = 1
     if wall_objects:
-        nearest_wall = min(
-            wall_objects,
-            key=lambda wall: (bbox_center(object_bbox_xy(wall))[0] - mid[0]) ** 2
-            + (bbox_center(object_bbox_xy(wall))[1] - mid[1]) ** 2,
-        )
-        wall_center = bbox_center(object_bbox_xy(nearest_wall))
-        wall_side = (wall_center[0] - mid[0]) * nx + (wall_center[1] - mid[1]) * ny
+        wall_points = [point for wall in wall_objects for point in object_xy_coords(wall)]
+        endpoint_candidates = []
+        for endpoint in endpoints:
+            nearest = min(
+                wall_points,
+                key=lambda point: (point[0] - endpoint[0]) ** 2 + (point[1] - endpoint[1]) ** 2,
+            )
+            dist = math.hypot(nearest[0] - endpoint[0], nearest[1] - endpoint[1])
+            endpoint_candidates.append((dist, endpoint, nearest))
+        endpoint_dist, endpoint, wall_point = min(endpoint_candidates, key=lambda item: item[0])
+
+        if endpoint_dist <= 0.2:
+            line_point = endpoint
+        else:
+            wall_point = min(
+                wall_points,
+                key=lambda point: (point[0] - mid[0]) ** 2 + (point[1] - mid[1]) ** 2,
+            )
+            line_point = mid
+
+        wall_side = (wall_point[0] - line_point[0]) * nx + (wall_point[1] - line_point[1]) * ny
         side = -1 if wall_side >= 0 else 1
 
     ox = nx * thickness * side
@@ -349,7 +367,7 @@ def create_single_line_beam_box(s, e, thickness, height, name, mat, wall_objects
 
 
 def snap_single_line_beam_ends(obj, target_objects, tol=0.02):
-    """单线梁只沿自身长度方向吸端点，避免宽度被压塌。"""
+    """单线梁保持宽度，只做整体靠边平移和沿长度方向吸端点。"""
     bpy.context.view_layer.update()
     points = object_xy_coords(obj)
     xs = [p[0] for p in points]
@@ -361,6 +379,48 @@ def snap_single_line_beam_ends(obj, target_objects, tol=0.02):
     target_points = [point for target in target_objects for point in object_xy_coords(target)]
     if not target_points:
         return
+
+    sx = obj.scale.x if obj.scale.x else 1
+    sy = obj.scale.y if obj.scale.y else 1
+
+    if axis == "y":
+        side_candidates = []
+        for side_x in (min(xs), max(xs)):
+            nearby = [
+                px
+                for px, py in target_points
+                if min(ys) - tol <= py <= max(ys) + tol and abs(px - side_x) <= tol
+            ]
+            if nearby:
+                target_x = min(nearby, key=lambda px: abs(px - side_x))
+                side_candidates.append((abs(target_x - side_x), target_x - side_x))
+        if side_candidates:
+            _, dx = min(side_candidates, key=lambda item: item[0])
+            for vert in obj.data.vertices:
+                vert.co.x = (vert.co.x * sx + dx) / sx
+            obj.data.update()
+            points = object_xy_coords(obj)
+            xs = [p[0] for p in points]
+            ys = [p[1] for p in points]
+    else:
+        side_candidates = []
+        for side_y in (min(ys), max(ys)):
+            nearby = [
+                py
+                for px, py in target_points
+                if min(xs) - tol <= px <= max(xs) + tol and abs(py - side_y) <= tol
+            ]
+            if nearby:
+                target_y = min(nearby, key=lambda py: abs(py - side_y))
+                side_candidates.append((abs(target_y - side_y), target_y - side_y))
+        if side_candidates:
+            _, dy = min(side_candidates, key=lambda item: item[0])
+            for vert in obj.data.vertices:
+                vert.co.y = (vert.co.y * sy + dy) / sy
+            obj.data.update()
+            points = object_xy_coords(obj)
+            xs = [p[0] for p in points]
+            ys = [p[1] for p in points]
 
     if axis == "y":
         current_ends = (min(ys), max(ys))
@@ -383,8 +443,6 @@ def snap_single_line_beam_ends(obj, target_objects, tol=0.02):
         if nearby:
             targets[idx] = min(nearby, key=lambda candidate: abs(candidate - current))
 
-    sx = obj.scale.x if obj.scale.x else 1
-    sy = obj.scale.y if obj.scale.y else 1
     for vert in obj.data.vertices:
         world_x = vert.co.x * sx
         world_y = vert.co.y * sy
