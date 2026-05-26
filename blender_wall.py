@@ -479,9 +479,37 @@ def build_ceiling_resolver(data, fallback_height):
     return ceiling_at, markers
 
 
-def create_ceiling_drop_boxes(markers, wall_height, wall_objects, mat, collection):
+def create_ceiling_drop_boxes(markers, wall_height, wall_objects, mat, collection, footprints=None):
     if not markers:
         return []
+
+    def nearest_ceiling_height(point):
+        x, y = point
+        return min(
+            markers,
+            key=lambda marker: (x - marker[0]) ** 2 + (y - marker[1]) ** 2,
+        )[2]
+
+    objects = []
+    if footprints:
+        for i, footprint in enumerate(footprints):
+            ceiling_height = nearest_ceiling_height(polygon_center(footprint))
+            if ceiling_height >= wall_height:
+                print(f"层高块{i}: 跳过，CH={ceiling_height}mm 已到统一墙高")
+                continue
+            size_z = wall_height - ceiling_height
+            obj = create_extruded_polygon(footprint, size_z, f"层高块{i:03d}", mat)
+            if not obj:
+                continue
+            for vert in obj.data.vertices:
+                vert.co.z += ceiling_height
+            obj.data.update()
+            collection.objects.link(obj)
+            obj.scale = (0.001, 0.001, 0.001)
+            objects.append(obj)
+            print(f"层高块{i}: CH={ceiling_height}mm, 补高{size_z}mm")
+        if objects:
+            return objects
 
     building_bbox = None
     for wall in wall_objects:
@@ -505,7 +533,6 @@ def create_ceiling_drop_boxes(markers, wall_height, wall_objects, mat, collectio
         end = upper if idx == len(values) - 1 else (value + values[idx + 1]) / 2
         return start, end
 
-    objects = []
     for i, (x_mm, y_mm, ceiling_height) in enumerate(markers):
         if ceiling_height >= wall_height:
             print(f"层高块{i}: 跳过，CH={ceiling_height}mm 已到统一墙高")
@@ -534,6 +561,40 @@ def create_ceiling_drop_boxes(markers, wall_height, wall_objects, mat, collectio
         print(f"层高块{i}: CH={ceiling_height}mm, 补高{size_z}mm")
 
     return objects
+
+
+def ceiling_footprints_from_walls_and_beams(data):
+    beam_lines = [
+        beam
+        for beam in data.get("beams", [])
+        if beam.get("type") == "beam" and beam.get("start") and beam.get("end")
+    ]
+    wall_polygons = []
+    for walls in [
+        [w for w in data.get("walls", []) if not w.get("demolishable")],
+        [w for w in data.get("walls", []) if w.get("demolishable")],
+    ]:
+        wall_polygons.extend(find_closed_polygons(walls))
+
+    beam_polygons = []
+    beam_pairs, _ = pair_parallel_walls(beam_lines, min_thickness=30, max_thickness=600)
+    for a_idx, b_idx in beam_pairs:
+        beam_polygons.append(
+            pair_to_polygon(
+                make_segment(beam_lines[a_idx]),
+                make_segment(beam_lines[b_idx]),
+                extend_caps=False,
+            )
+        )
+
+    blocked_polygons = wall_polygons + beam_polygons
+    edges = data.get("walls", []) + beam_lines
+    polygons = find_closed_polygons(edges)
+    return [
+        poly for poly in polygons
+        if len(poly) >= 4
+        and not any(point_in_polygon(polygon_center(poly), blocked) for blocked in blocked_polygons)
+    ]
 
 
 def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
@@ -818,7 +879,7 @@ def main():
     mat_model.diffuse_color = (0.65, 0.65, 0.65, 1.0)
 
     heights = data.get("ceiling_heights", [2800])
-    avg_h = round(max(heights))
+    avg_h = round(max(heights)) + 100
     ceiling_at, ceiling_markers = build_ceiling_resolver(data, avg_h)
     print(f"统一墙高: {avg_h}mm，局部层高标注: {len(ceiling_markers)}个")
 
@@ -917,6 +978,7 @@ def main():
         wall_objects,
         mat_model,
         collection,
+        ceiling_footprints_from_walls_and_beams(data),
     )
     total += len(ceiling_drop_objects)
     print(f"层高块: 建模{len(ceiling_drop_objects)}块")
