@@ -917,6 +917,13 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
             tol=0.06,
             constrain_bbox=bbox_from_xy_points(footprint[:-1], scale=0.001, margin=0.06),
         )
+        if objects:
+            snap_box_xy_to_walls(
+                obj,
+                objects,
+                tol=0.06,
+                constrain_bbox=bbox_from_xy_points(footprint[:-1], scale=0.001, margin=0.06),
+            )
         objects.append(obj)
         width_label = f", 梁宽{beam_width}mm" if beam_width else ""
         print(f"{name}: 梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm{width_label}")
