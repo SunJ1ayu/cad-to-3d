@@ -97,7 +97,7 @@ def parse_dxf(filepath: str) -> dict:
                 "position": [round(pos.x, 1), round(pos.y, 1)],
                 "opening_length": parsed.get("opening_length"),
                 "frame_width": parsed.get("frame_width"),
-                "rotation": round(math.degrees(e.dxf.rotation), 1) if e.dxf.rotation else 0,
+                "rotation": round(e.dxf.rotation, 1) if e.dxf.rotation else 0,
                 # 以下字段待关联 SH-文字 后填充
                 "sill_height": None,
                 "window_height": None,
@@ -118,7 +118,7 @@ def parse_dxf(filepath: str) -> dict:
                 "representation": "block",
                 "block_name": e.dxf.name,
                 "position": [round(pos.x, 1), round(pos.y, 1)],
-                "rotation": round(math.degrees(e.dxf.rotation), 1) if e.dxf.rotation else 0,
+                "rotation": round(e.dxf.rotation, 1) if e.dxf.rotation else 0,
                 "door_height": None,
                 "door_width": None,
                 "annotations": [],

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-JSON → Blender 3D 白模（v6 混合版）
-闭合多边形拉伸 + 未覆盖线段 box 补全，不漏不错。
+JSON → Blender 3D 白模
+窄闭合轮廓直接拉伸，平行边线合并成墙，落单线段 box 兜底。
 """
 
 import bpy
@@ -67,6 +67,55 @@ def find_closed_polygons(walls):
     return polygons
 
 
+def poly_area(poly):
+    a = 0
+    for k in range(len(poly) - 1):
+        a += poly[k][0] * poly[k + 1][1] - poly[k + 1][0] * poly[k][1]
+    return abs(a) / 2
+
+
+def poly_perimeter(poly):
+    return sum(
+        math.hypot(poly[k + 1][0] - poly[k][0], poly[k + 1][1] - poly[k][1])
+        for k in range(len(poly) - 1)
+    )
+
+
+def is_wall_outline(poly, max_thin_side=600, max_area=650000):
+    """只把窄闭合轮廓当墙体，避免把房间/区域实心拉伸。"""
+    area = poly_area(poly)
+    perim = poly_perimeter(poly)
+    if area <= 0 or perim <= 0:
+        return False
+
+    xs = [p[0] for p in poly[:-1]]
+    ys = [p[1] for p in poly[:-1]]
+    bbox_w = max(xs) - min(xs)
+    bbox_h = max(ys) - min(ys)
+    if bbox_w <= 0 or bbox_h <= 0:
+        return False
+
+    # 这里不用 avg_width 单独判定：大房间轮廓也可能因为周长很长而算出较小均宽。
+    # 先按包围盒短边和面积收紧，只接受短墙、柱、墙垛这类窄闭合轮廓。
+    return min(bbox_w, bbox_h) <= max_thin_side and area <= max_area
+
+
+def line_key_for_wall(w, tol=10.0):
+    def key(x, y):
+        return (round(x / tol) * tol, round(y / tol) * tol)
+
+    sk = key(w["start"][0], w["start"][1])
+    ek = key(w["end"][0], w["end"][1])
+    return (min(sk, ek), max(sk, ek))
+
+
+def polygon_line_keys(poly):
+    return {
+        (min(poly[k], poly[k + 1]), max(poly[k], poly[k + 1]))
+        for k in range(len(poly) - 1)
+    }
+
+
 def create_extruded_polygon(poly_keys, height, name, mat):
     """闭合多边形拉伸"""
     pts = [(k[0], k[1]) for k in poly_keys]
@@ -88,6 +137,97 @@ def create_extruded_polygon(poly_keys, height, name, mat):
     obj = bpy.data.objects.new(name, mesh)
     obj.data.materials.append(mat)
     return obj
+
+
+def make_segment(w):
+    sx, sy = w["start"]
+    ex, ey = w["end"]
+    dx = ex - sx
+    dy = ey - sy
+    length = math.hypot(dx, dy)
+    if length == 0:
+        return None
+    ux = dx / length
+    uy = dy / length
+    return {
+        "wall": w,
+        "length": length,
+        "dir": (ux, uy),
+        "normal": (-uy, ux),
+        "mid": ((sx + ex) / 2, (sy + ey) / 2),
+        "points": [(sx, sy), (ex, ey)],
+    }
+
+
+def pair_to_polygon(a, b):
+    ux, uy = a["dir"]
+    if ux * b["dir"][0] + uy * b["dir"][1] < 0:
+        ux, uy = -ux, -uy
+
+    nx, ny = -uy, ux
+    points = a["points"] + b["points"]
+    ts = [x * ux + y * uy for x, y in points]
+    ds = [x * nx + y * ny for x, y in points]
+    t0, t1 = max(min(p[0] * ux + p[1] * uy for p in a["points"]),
+                 min(p[0] * ux + p[1] * uy for p in b["points"])), \
+             min(max(p[0] * ux + p[1] * uy for p in a["points"]),
+                 max(p[0] * ux + p[1] * uy for p in b["points"]))
+    if t1 <= t0:
+        t0, t1 = min(ts), max(ts)
+    d0, d1 = min(ds), max(ds)
+    return [
+        (ux * t0 + nx * d0, uy * t0 + ny * d0),
+        (ux * t1 + nx * d0, uy * t1 + ny * d0),
+        (ux * t1 + nx * d1, uy * t1 + ny * d1),
+        (ux * t0 + nx * d1, uy * t0 + ny * d1),
+        (ux * t0 + nx * d0, uy * t0 + ny * d0),
+    ]
+
+
+def pair_parallel_walls(walls, min_thickness=70, max_thickness=360):
+    """把 CAD 双边线合成一堵墙，返回 pairs 和未配对索引。"""
+    segs = [make_segment(w) for w in walls]
+    candidates = []
+
+    for i, a in enumerate(segs):
+        if not a:
+            continue
+        for j in range(i + 1, len(segs)):
+            b = segs[j]
+            if not b:
+                continue
+
+            dot = abs(a["dir"][0] * b["dir"][0] + a["dir"][1] * b["dir"][1])
+            if dot < 0.996:
+                continue
+
+            ux, uy = a["dir"]
+            nx, ny = a["normal"]
+            ai = sorted([p[0] * ux + p[1] * uy for p in a["points"]])
+            bi = sorted([p[0] * ux + p[1] * uy for p in b["points"]])
+            overlap = min(ai[1], bi[1]) - max(ai[0], bi[0])
+            if overlap <= 0:
+                continue
+            if overlap < min(a["length"], b["length"]) * 0.55:
+                continue
+
+            distance = abs((b["mid"][0] - a["mid"][0]) * nx + (b["mid"][1] - a["mid"][1]) * ny)
+            if not (min_thickness <= distance <= max_thickness):
+                continue
+
+            length_delta = abs(a["length"] - b["length"])
+            candidates.append((distance + length_delta * 0.1 - overlap * 0.001, i, j))
+
+    used = set()
+    pairs = []
+    for _, i, j in sorted(candidates):
+        if i in used or j in used:
+            continue
+        used.add(i)
+        used.add(j)
+        pairs.append((i, j))
+
+    return pairs, [i for i in range(len(walls)) if i not in used]
 
 
 def create_wall_box(s, e, thickness, height, name, mat):
@@ -157,58 +297,46 @@ def main():
         ([w for w in data["walls"] if not w.get("demolishable")], mat_struct, "承重墙", 240),
         ([w for w in data["walls"] if w.get("demolishable")], mat_demo, "可拆墙", 100),
     ]:
-        polys = find_closed_polygons(walls)
-
-        # 记录被多边形覆盖的线段索引
-        TOL = 10.0
-        def key(x, y):
-            return (round(x / TOL) * TOL, round(y / TOL) * TOL)
-
-        poly_line_keys = set()
+        polys = [p for p in find_closed_polygons(walls) if is_wall_outline(p)]
+        covered_keys = set()
         for poly in polys:
-            for k in range(len(poly)):
-                a = poly[k]
-                b = poly[(k + 1) % len(poly)]
-                poly_line_keys.add((min(a, b), max(a, b)))
+            covered_keys.update(polygon_line_keys(poly))
 
-        # 找出未被覆盖的线段
-        uncovered = []
+        remaining = []
+        original_indices = []
         for i, w in enumerate(walls):
-            sk = key(w["start"][0], w["start"][1])
-            ek = key(w["end"][0], w["end"][1])
-            line_key = (min(sk, ek), max(sk, ek))
-            if line_key not in poly_line_keys:
-                uncovered.append(i)
+            if line_key_for_wall(w) not in covered_keys:
+                remaining.append(w)
+                original_indices.append(i)
 
-        # 去掉外围多边形（面积最大的）
-        def poly_area(p):
-            a = 0
-            for k in range(len(p) - 1):
-                a += p[k][0] * p[k+1][1] - p[k+1][0] * p[k][1]
-            return abs(a) / 2
+        pairs, unpaired = pair_parallel_walls(remaining)
 
-        if len(polys) > 1:
-            max_area = max(poly_area(p) for p in polys)
-            inner_polys = [p for p in polys if poly_area(p) < max_area * 0.9]
-        else:
-            inner_polys = polys
+        print(f"{label}: {len(walls)}条线 → {len(polys)}个窄闭合轮廓 + {len(pairs)}组成对边线 + {len(unpaired)}条兜底")
 
-        print(f"{label}: {len(walls)}条线 → {len(polys)}个多边形(去掉外围剩{len(inner_polys)}个) + {len(uncovered)}条未覆盖")
-
-        # 1. 多边形拉伸
-        for i, poly in enumerate(inner_polys):
+        # 1. 窄闭合轮廓拉伸
+        for i, poly in enumerate(polys):
             if len(poly) < 3:
                 continue
-            obj = create_extruded_polygon(poly, avg_h, f"{label}_房间{i:03d}", mat)
+            obj = create_extruded_polygon(poly, avg_h, f"{label}_轮廓{i:03d}", mat)
             if obj:
                 collection.objects.link(obj)
                 obj.scale = (0.001, 0.001, 0.001)
                 total += 1
 
-        # 2. 未覆盖线段 → box 补全
-        for idx in uncovered:
-            w = walls[idx]
-            obj = create_wall_box(w["start"], w["end"], thick, avg_h, f"{label}_补_{idx:03d}", mat)
+        # 2. 平行双边线 → 一堵墙
+        for i, (a_idx, b_idx) in enumerate(pairs):
+            poly = pair_to_polygon(make_segment(remaining[a_idx]), make_segment(remaining[b_idx]))
+            obj = create_extruded_polygon(poly, avg_h, f"{label}_配对{i:03d}", mat)
+            if obj:
+                collection.objects.link(obj)
+                obj.scale = (0.001, 0.001, 0.001)
+                total += 1
+
+        # 3. 落单线段 → box 兜底
+        for idx in unpaired:
+            w = remaining[idx]
+            original_idx = original_indices[idx]
+            obj = create_wall_box(w["start"], w["end"], thick, avg_h, f"{label}_兜底_{original_idx:03d}", mat)
             if obj:
                 collection.objects.link(obj)
                 obj.scale = (0.001, 0.001, 0.001)
