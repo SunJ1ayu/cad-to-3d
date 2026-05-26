@@ -459,6 +459,69 @@ def snap_single_line_beam_ends(obj, target_objects, tol=0.02):
     obj.data.update()
 
 
+def snap_single_line_beam_far_side(obj, target_objects, tol=0.02):
+    """单线梁靠墙侧已对齐后，允许远侧边吸到附近窗/墙边。"""
+    bpy.context.view_layer.update()
+    points = object_xy_coords(obj)
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    width_x = max(xs) - min(xs)
+    width_y = max(ys) - min(ys)
+    axis = "y" if width_y >= width_x else "x"
+    target_points = [point for target in target_objects for point in object_xy_coords(target)]
+    if not target_points:
+        return
+
+    sx = obj.scale.x if obj.scale.x else 1
+    sy = obj.scale.y if obj.scale.y else 1
+
+    if axis == "y":
+        side_values = (min(xs), max(xs))
+        side_scores = []
+        for side_x in side_values:
+            matches = [
+                px for px, py in target_points
+                if min(ys) - tol <= py <= max(ys) + tol and abs(px - side_x) <= 0.001
+            ]
+            side_scores.append(len(matches))
+        anchor_side = side_values[0] if side_scores[0] >= side_scores[1] else side_values[1]
+        far_side = side_values[1] if anchor_side == side_values[0] else side_values[0]
+        candidates = [
+            px for px, py in target_points
+            if min(ys) - tol <= py <= max(ys) + tol and abs(px - far_side) <= tol
+        ]
+        if not candidates:
+            return
+        target_x = min(candidates, key=lambda px: abs(px - far_side))
+        for vert in obj.data.vertices:
+            world_x = vert.co.x * sx
+            if abs(world_x - far_side) < 0.001:
+                vert.co.x = target_x / sx
+    else:
+        side_values = (min(ys), max(ys))
+        side_scores = []
+        for side_y in side_values:
+            matches = [
+                py for px, py in target_points
+                if min(xs) - tol <= px <= max(xs) + tol and abs(py - side_y) <= 0.001
+            ]
+            side_scores.append(len(matches))
+        anchor_side = side_values[0] if side_scores[0] >= side_scores[1] else side_values[1]
+        far_side = side_values[1] if anchor_side == side_values[0] else side_values[0]
+        candidates = [
+            py for px, py in target_points
+            if min(xs) - tol <= px <= max(xs) + tol and abs(py - far_side) <= tol
+        ]
+        if not candidates:
+            return
+        target_y = min(candidates, key=lambda py: abs(py - far_side))
+        for vert in obj.data.vertices:
+            world_y = vert.co.y * sy
+            if abs(world_y - far_side) < 0.001:
+                vert.co.y = target_y / sy
+    obj.data.update()
+
+
 def create_oriented_box(center, axis_x, axis_y, size_x, size_y, size_z, name):
     cx, cy, cz = center
     ux, uy = axis_x
@@ -1139,6 +1202,7 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
         collection.objects.link(obj)
         obj.scale = (0.001, 0.001, 0.001)
         snap_single_line_beam_ends(obj, wall_objects + objects, tol=0.02)
+        snap_single_line_beam_far_side(obj, wall_objects + objects, tol=0.02)
         obj["single_line_beam_fallback"] = True
         objects.append(obj)
         print(f"梁{original_idx}: 未配对单线兜底，梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm, 梁宽{beam_width}mm")
@@ -1279,6 +1343,7 @@ def main():
         mat_model,
     )
     total += len(window_infill)
+    wall_objects.extend(window_infill)
     print(f"窗洞布尔: 命中{window_hits}次，补窗上下墙{len(window_infill)}块")
 
     door_headers = create_door_header_boxes(
