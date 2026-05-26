@@ -347,6 +347,30 @@ def object_xy_coords(obj):
     return [(co.x, co.y) for co in (obj.matrix_world @ v.co for v in obj.data.vertices)]
 
 
+def object_xy_edges(obj):
+    points = sorted(set(object_xy_coords(obj)))
+    if len(points) < 3:
+        return []
+    cx = sum(x for x, _ in points) / len(points)
+    cy = sum(y for _, y in points) / len(points)
+    ordered = sorted(points, key=lambda p: math.atan2(p[1] - cy, p[0] - cx))
+    return list(zip(ordered, ordered[1:] + ordered[:1]))
+
+
+def nearest_point_on_segment(point, a, b):
+    px, py = point
+    ax, ay = a
+    bx, by = b
+    dx = bx - ax
+    dy = by - ay
+    denom = dx * dx + dy * dy
+    if denom == 0:
+        return a, math.hypot(px - ax, py - ay)
+    t = max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / denom))
+    nearest = (ax + t * dx, ay + t * dy)
+    return nearest, math.hypot(px - nearest[0], py - nearest[1])
+
+
 def bboxes_overlap(a, b):
     return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
 
@@ -402,10 +426,12 @@ def snap_box_xy_to_walls(obj, wall_objects, tol=0.03, constrain_bbox=None):
     targets = {"x0": x0, "y0": y0, "x1": x1, "y1": y1}
     best = {key: tol for key in targets}
     wall_points = []
+    wall_edges = []
 
     for wall in wall_objects:
         wx0, wy0, wx1, wy1 = object_bbox_xy(wall)
         wall_points.extend(object_xy_coords(wall))
+        wall_edges.extend(object_xy_edges(wall))
         x_candidates = {wx0, wx1}
         y_candidates = {wy0, wy1}
         for px, py in object_xy_coords(wall):
@@ -459,8 +485,16 @@ def snap_box_xy_to_walls(obj, wall_objects, tol=0.03, constrain_bbox=None):
             if abs(world_x - px) <= tol and abs(world_y - py) <= tol
         ]
         if not nearby:
-            continue
-        px, py = min(nearby, key=lambda p: (world_x - p[0]) ** 2 + (world_y - p[1]) ** 2)
+            edge_candidates = []
+            for a, b in wall_edges:
+                nearest, distance = nearest_point_on_segment((world_x, world_y), a, b)
+                if distance <= tol:
+                    edge_candidates.append((distance, nearest))
+            if not edge_candidates:
+                continue
+            _, (px, py) = min(edge_candidates, key=lambda item: item[0])
+        else:
+            px, py = min(nearby, key=lambda p: (world_x - p[0]) ** 2 + (world_y - p[1]) ** 2)
         vert.co.x = px / sx
         vert.co.y = py / sy
     obj.data.update()
