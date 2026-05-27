@@ -1247,8 +1247,8 @@ def create_outer_outline_from_wall_lines(data):
         clean_area = polygon_area(clean_outline)
         outer_area = polygon_area([(x * 0.001, y * 0.001) for x, y in outer])
         if clean_area > 0 and outer_area >= clean_area * 0.6:
-            return [(x * 0.001, y * 0.001) for x, y in outer]
-    return clean_outline
+            return [(x * 0.001, y * 0.001) for x, y in outer], "closed_wall_outline"
+    return clean_outline, "wall_bbox_fallback"
 
 
 def rect_from_bbox_meters(bbox):
@@ -1287,7 +1287,13 @@ def simplify_orthogonal_polygon(points, tol=0.001):
     return pts
 
 
-def structural_footprints_from_objects(data, objects, buffer=0.0, max_bbox_area=10.0):
+def structural_footprints_from_objects(
+    data,
+    objects,
+    buffer=0.0,
+    max_bbox_area=10.0,
+    include_data_footprints=True,
+):
     footprints = []
     for obj in objects:
         if obj.type != "MESH":
@@ -1303,19 +1309,20 @@ def structural_footprints_from_objects(data, objects, buffer=0.0, max_bbox_area=
         else:
             footprints.append(simplify_orthogonal_polygon(footprint))
 
-    for key in ("columns", "shafts", "openings", "voids"):
-        for item in data.get(key, []):
-            bbox = item.get("bbox")
-            if not bbox:
-                continue
-            x0, y0, x1, y1 = [value * 0.001 for value in bbox]
-            x0, y0, x1, y1 = x0 - buffer, y0 - buffer, x1 + buffer, y1 + buffer
-            if x1 - x0 <= 0.01 or y1 - y0 <= 0.01:
-                continue
-            if key == "columns" and (x1 - x0) * (y1 - y0) > max_bbox_area:
-                print(f"柱footprint: 跳过疑似聚合bbox，面积{(x1 - x0) * (y1 - y0):.1f}㎡")
-                continue
-            footprints.append(rect_from_bbox_meters((x0, y0, x1, y1)))
+    if include_data_footprints:
+        for key in ("columns", "shafts", "openings", "voids"):
+            for item in data.get(key, []):
+                bbox = item.get("bbox")
+                if not bbox:
+                    continue
+                x0, y0, x1, y1 = [value * 0.001 for value in bbox]
+                x0, y0, x1, y1 = x0 - buffer, y0 - buffer, x1 + buffer, y1 + buffer
+                if x1 - x0 <= 0.01 or y1 - y0 <= 0.01:
+                    continue
+                if key == "columns" and (x1 - x0) * (y1 - y0) > max_bbox_area:
+                    print(f"柱footprint: 跳过疑似聚合bbox，面积{(x1 - x0) * (y1 - y0):.1f}㎡")
+                    continue
+                footprints.append(rect_from_bbox_meters((x0, y0, x1, y1)))
 
     return footprints
 
@@ -1455,7 +1462,13 @@ def touches_outline_corner(region, outline_polygon, tol=0.02):
     )
 
 
-def clean_ceiling_regions(regions, outline_polygon=None, min_area_sqm=2.0, min_width=0.35):
+def clean_ceiling_regions(
+    regions,
+    outline_polygon=None,
+    outline_source=None,
+    min_area_sqm=2.0,
+    min_width=0.35,
+):
     cleaned = []
     for region in regions:
         simplified = simplify_orthogonal_polygon(region)
@@ -1464,7 +1477,11 @@ def clean_ceiling_regions(regions, outline_polygon=None, min_area_sqm=2.0, min_w
         x0, y0, x1, y1 = polygon_bbox(simplified)
         if min(x1 - x0, y1 - y0) < min_width:
             continue
-        if outline_polygon and touches_outline_corner(simplified, outline_polygon):
+        if (
+            outline_polygon
+            and outline_source == "wall_bbox_fallback"
+            and touches_outline_corner(simplified, outline_polygon)
+        ):
             continue
         cleaned.append(simplified)
     return sorted(
@@ -1473,9 +1490,19 @@ def clean_ceiling_regions(regions, outline_polygon=None, min_area_sqm=2.0, min_w
     )
 
 
-def create_structural_difference_ceiling_regions(data, outline_polygon, structural_objects, mat, collection, wall_height):
-    if not outline_polygon:
+def create_structural_difference_ceiling_regions(
+    data,
+    outline_polygons,
+    outline_source,
+    structural_objects,
+    mat,
+    collection,
+    wall_height,
+):
+    if not outline_polygons:
         return []
+    if outline_polygons and isinstance(outline_polygons[0][0], (int, float)):
+        outline_polygons = [outline_polygons]
 
     beam_bottoms = []
     for obj in structural_objects:
@@ -1488,8 +1515,10 @@ def create_structural_difference_ceiling_regions(data, outline_polygon, structur
     block_height = max(wall_height - z_base, 0.2)
 
     structural_footprints = structural_footprints_from_objects(data, structural_objects)
-    raw_regions = difference_footprints_from_outline(outline_polygon, structural_footprints)
-    regions = clean_ceiling_regions(raw_regions, outline_polygon=outline_polygon)
+    raw_regions = []
+    for outline_polygon in outline_polygons:
+        raw_regions.extend(difference_footprints_from_outline(outline_polygon, structural_footprints))
+    regions = clean_ceiling_regions(raw_regions)
 
     objects = []
     for i, region in enumerate(regions):
@@ -1506,10 +1535,33 @@ def create_structural_difference_ceiling_regions(data, outline_polygon, structur
         objects.append(obj)
 
     print(
-        f"2D结构差集吊顶块: 外轮廓1个, 结构footprint{len(structural_footprints)}个, "
+        f"2D结构差集吊顶块: 外轮廓{len(outline_polygons)}个({outline_source}), 结构footprint{len(structural_footprints)}个, "
         f"Z={z_base:.3f}..{z_base + block_height:.3f}, 原始{len(raw_regions)}块, 清理后{len(objects)}块"
     )
     return objects
+
+
+def create_space_outlines_from_boundary_objects(data, boundary_objects):
+    search_outline, outline_source = create_outer_outline_from_wall_lines(data)
+    if not search_outline:
+        return [], outline_source
+
+    boundary_footprints = structural_footprints_from_objects(
+        data,
+        boundary_objects,
+        include_data_footprints=False,
+    )
+    raw_spaces = difference_footprints_from_outline(search_outline, boundary_footprints)
+    spaces = clean_ceiling_regions(
+        raw_spaces,
+        outline_polygon=search_outline,
+        outline_source=outline_source,
+        min_area_sqm=0.5,
+        min_width=0.35,
+    )
+    if not spaces:
+        return [search_outline], outline_source
+    return spaces, f"space_outlines_from_{outline_source}"
 
 
 def create_boolean_ceiling_regions(outline_polygon, cutter_objects, mat, collection, wall_height):
@@ -2132,10 +2184,15 @@ def main():
 
     if boolean_regions_only:
         structural_objects = wall_objects + door_headers + beam_objects
-        outer_outline = create_outer_outline_from_wall_lines(data)
+        boundary_objects = wall_objects + door_headers
+        outer_outlines, outline_source = create_space_outlines_from_boundary_objects(
+            data,
+            boundary_objects,
+        )
         boolean_regions = create_structural_difference_ceiling_regions(
             data,
-            outer_outline,
+            outer_outlines,
+            outline_source,
             structural_objects,
             mat_boolean,
             collection,
