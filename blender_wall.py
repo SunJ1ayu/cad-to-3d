@@ -1261,7 +1261,33 @@ def buffered_polygon_bbox(poly, buffer):
     return (x0 - buffer, y0 - buffer, x1 + buffer, y1 + buffer)
 
 
-def structural_footprints_from_objects(data, objects, buffer=0.04, max_bbox_area=10.0):
+def simplify_orthogonal_polygon(points, tol=0.001):
+    if len(points) >= 2 and points[0] == points[-1]:
+        pts = points[:-1]
+    else:
+        pts = list(points)
+    if len(pts) < 3:
+        return points
+
+    changed = True
+    while changed and len(pts) >= 3:
+        changed = False
+        simplified = []
+        for i, point in enumerate(pts):
+            prev = pts[i - 1]
+            nxt = pts[(i + 1) % len(pts)]
+            collinear_x = abs(prev[0] - point[0]) <= tol and abs(point[0] - nxt[0]) <= tol
+            collinear_y = abs(prev[1] - point[1]) <= tol and abs(point[1] - nxt[1]) <= tol
+            if collinear_x or collinear_y:
+                changed = True
+                continue
+            simplified.append(point)
+        pts = simplified
+    pts.append(pts[0])
+    return pts
+
+
+def structural_footprints_from_objects(data, objects, buffer=0.0, max_bbox_area=10.0):
     footprints = []
     for obj in objects:
         if obj.type != "MESH":
@@ -1269,10 +1295,13 @@ def structural_footprints_from_objects(data, objects, buffer=0.04, max_bbox_area
         footprint = object_footprint_xy(obj)
         if not footprint:
             continue
-        x0, y0, x1, y1 = buffered_polygon_bbox(footprint, buffer)
-        if x1 - x0 <= 0.01 or y1 - y0 <= 0.01:
+        x0, y0, x1, y1 = polygon_bbox(footprint)
+        if x1 - x0 <= 0.01 or y1 - y0 <= 0.01 or polygon_area(footprint) <= 0.0001:
             continue
-        footprints.append(rect_from_bbox_meters((x0, y0, x1, y1)))
+        if buffer > 0:
+            footprints.append(rect_from_bbox_meters(buffered_polygon_bbox(footprint, buffer)))
+        else:
+            footprints.append(simplify_orthogonal_polygon(footprint))
 
     for key in ("columns", "shafts", "openings", "voids"):
         for item in data.get(key, []):
@@ -1397,9 +1426,25 @@ def difference_footprints_from_outline(outline_polygon, structural_footprints, m
             continue
         boundary = component_boundary(component)
         if boundary:
-            regions.append(boundary)
+            regions.append(simplify_orthogonal_polygon(boundary))
 
     return sorted(regions, key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]))
+
+
+def clean_ceiling_regions(regions, min_area_sqm=2.0, min_width=0.35):
+    cleaned = []
+    for region in regions:
+        simplified = simplify_orthogonal_polygon(region)
+        if polygon_area(simplified) < min_area_sqm:
+            continue
+        x0, y0, x1, y1 = polygon_bbox(simplified)
+        if min(x1 - x0, y1 - y0) < min_width:
+            continue
+        cleaned.append(simplified)
+    return sorted(
+        cleaned,
+        key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]),
+    )
 
 
 def create_structural_difference_ceiling_regions(data, outline_polygon, structural_objects, mat, collection, wall_height):
@@ -1417,7 +1462,8 @@ def create_structural_difference_ceiling_regions(data, outline_polygon, structur
     block_height = max(wall_height - z_base, 0.2)
 
     structural_footprints = structural_footprints_from_objects(data, structural_objects)
-    regions = difference_footprints_from_outline(outline_polygon, structural_footprints)
+    raw_regions = difference_footprints_from_outline(outline_polygon, structural_footprints)
+    regions = clean_ceiling_regions(raw_regions)
 
     objects = []
     for i, region in enumerate(regions):
@@ -1435,7 +1481,7 @@ def create_structural_difference_ceiling_regions(data, outline_polygon, structur
 
     print(
         f"2D结构差集吊顶块: 外轮廓1个, 结构footprint{len(structural_footprints)}个, "
-        f"Z={z_base:.3f}..{z_base + block_height:.3f}, 生成{len(objects)}块"
+        f"Z={z_base:.3f}..{z_base + block_height:.3f}, 原始{len(raw_regions)}块, 清理后{len(objects)}块"
     )
     return objects
 
