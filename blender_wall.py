@@ -9,6 +9,7 @@ import bmesh
 import json
 import sys
 import math
+import os
 from collections import defaultdict, deque
 
 
@@ -550,6 +551,41 @@ def create_oriented_box(center, axis_x, axis_y, size_x, size_y, size_z, name):
     mesh.from_pydata(corners, [], faces)
     mesh.update()
     return bpy.data.objects.new(name, mesh)
+
+
+def create_extruded_polygon_meters(points, height, name, mat=None, z_base=0):
+    pts = [(p[0], p[1]) for p in points]
+    if len(pts) >= 2 and pts[0] == pts[-1]:
+        pts = pts[:-1]
+    if len(pts) < 3:
+        return None
+
+    bm = bmesh.new()
+    vb = [bm.verts.new((x, y, z_base)) for x, y in pts]
+    vt = [bm.verts.new((x, y, z_base + height)) for x, y in pts]
+    bm.verts.ensure_lookup_table()
+    try:
+        bm.faces.new(vb)
+    except ValueError:
+        pass
+    try:
+        bm.faces.new(list(reversed(vt)))
+    except ValueError:
+        pass
+    for i in range(len(pts)):
+        j = (i + 1) % len(pts)
+        try:
+            bm.faces.new([vb[i], vb[j], vt[j], vt[i]])
+        except ValueError:
+            pass
+
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    if mat:
+        obj.data.materials.append(mat)
+    return obj
 
 
 def object_bbox_xy(obj):
@@ -1187,6 +1223,230 @@ def ceiling_footprints_from_model_objects(blocker_objects, ceiling_markers=None,
     return sorted(footprints, key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]))
 
 
+def create_boolean_ceiling_regions(wall_objects, beam_objects, mat, collection, wall_height):
+    wall_polygons = []
+    wall_bboxes = []
+    for obj in wall_objects:
+        if obj.type != "MESH":
+            continue
+        footprint = object_footprint_xy(obj)
+        if not footprint:
+            continue
+        bbox = polygon_bbox(footprint)
+        if bbox[2] <= bbox[0] or bbox[3] <= bbox[1]:
+            continue
+        wall_polygons.append(footprint)
+        wall_bboxes.append(bbox)
+    if not wall_bboxes:
+        return []
+
+    x_min = min(bbox[0] for bbox in wall_bboxes)
+    y_min = min(bbox[1] for bbox in wall_bboxes)
+    x_max = max(bbox[2] for bbox in wall_bboxes)
+    y_max = max(bbox[3] for bbox in wall_bboxes)
+    margin = 1.0
+    xs = sorted(
+        {round(value, 6) for bbox in wall_bboxes for value in (bbox[0], bbox[2])}
+        | {round(x_min - margin, 6), round(x_max + margin, 6)}
+    )
+    ys = sorted(
+        {round(value, 6) for bbox in wall_bboxes for value in (bbox[1], bbox[3])}
+        | {round(y_min - margin, 6), round(y_max + margin, 6)}
+    )
+
+    def is_wall(cx, cy):
+        return any(
+            point_in_polygon((cx, cy), poly) or point_on_polygon_boundary((cx, cy), poly, tol=0.001)
+            for poly in wall_polygons
+        )
+
+    width = len(xs) - 1
+    grid_height = len(ys) - 1
+    exterior = set()
+    queue = deque()
+    for i in range(width):
+        for j in (0, grid_height - 1):
+            queue.append((i, j))
+    for j in range(grid_height):
+        for i in (0, width - 1):
+            queue.append((i, j))
+
+    while queue:
+        i, j = queue.popleft()
+        if (i, j) in exterior or not (0 <= i < width and 0 <= j < grid_height):
+            continue
+        cx = (xs[i] + xs[i + 1]) / 2
+        cy = (ys[j] + ys[j + 1]) / 2
+        if is_wall(cx, cy):
+            continue
+        exterior.add((i, j))
+        for neighbor in ((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)):
+            queue.append(neighbor)
+
+    building_cells = {
+        (i, j)
+        for i in range(width)
+        for j in range(grid_height)
+        if (i, j) not in exterior
+    }
+    if not building_cells:
+        return []
+
+    def component_boundary(component):
+        edges = {}
+
+        def add_edge(a, b):
+            opposite = (b, a)
+            if opposite in edges:
+                del edges[opposite]
+            else:
+                edges[(a, b)] = True
+
+        for i, j in component:
+            p0 = (xs[i], ys[j])
+            p1 = (xs[i + 1], ys[j])
+            p2 = (xs[i + 1], ys[j + 1])
+            p3 = (xs[i], ys[j + 1])
+            add_edge(p0, p1)
+            add_edge(p1, p2)
+            add_edge(p2, p3)
+            add_edge(p3, p0)
+
+        outgoing = defaultdict(list)
+        for a, b in edges:
+            outgoing[a].append(b)
+        loops = []
+        while outgoing:
+            start = min(outgoing)
+            current = start
+            loop = [current]
+            previous = None
+            while True:
+                candidates = outgoing.get(current)
+                if not candidates:
+                    break
+                if previous is None or len(candidates) == 1:
+                    nxt = candidates.pop(0)
+                else:
+                    nxt = min(
+                        candidates,
+                        key=lambda p: math.atan2(p[1] - current[1], p[0] - current[0]),
+                    )
+                    candidates.remove(nxt)
+                if not candidates:
+                    outgoing.pop(current, None)
+                previous, current = current, nxt
+                loop.append(current)
+                if current == start:
+                    break
+            if len(loop) >= 4 and loop[0] == loop[-1]:
+                loops.append(loop)
+        return max(loops, key=polygon_area) if loops else None
+
+    seen = set()
+    beam_bottoms = []
+    for obj in beam_objects:
+        if obj.type != "MESH":
+            continue
+        zs = [(obj.matrix_world @ vert.co).z for vert in obj.data.vertices]
+        if zs:
+            beam_bottoms.append(min(zs))
+    z_base = min(beam_bottoms) if beam_bottoms else wall_height - 0.4
+    height = max(wall_height - z_base, 0.2)
+
+    outline_objects = []
+    for cell in list(building_cells):
+        if cell in seen:
+            continue
+        queue = deque([cell])
+        seen.add(cell)
+        component = []
+        while queue:
+            current = queue.popleft()
+            component.append(current)
+            i, j = current
+            for neighbor in ((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)):
+                if neighbor in building_cells and neighbor not in seen:
+                    seen.add(neighbor)
+                    queue.append(neighbor)
+        boundary = component_boundary(component)
+        if not boundary or polygon_area(boundary) < 3.0:
+            continue
+        obj = create_extruded_polygon_meters(
+            boundary,
+            height,
+            f"吊顶外轮廓_{len(outline_objects):03d}",
+            mat,
+            z_base=z_base,
+        )
+        if obj:
+            collection.objects.link(obj)
+            outline_objects.append(obj)
+
+    cutters = []
+    for source in wall_objects + beam_objects:
+        sx0, sy0, sx1, sy1 = object_bbox_xy(source)
+        if sx1 <= sx0 or sy1 <= sy0:
+            continue
+        overlap = 0.08
+        footprint = [
+            (sx0 - overlap, sy0 - overlap),
+            (sx1 + overlap, sy0 - overlap),
+            (sx1 + overlap, sy1 + overlap),
+            (sx0 - overlap, sy1 + overlap),
+            (sx0 - overlap, sy0 - overlap),
+        ]
+        cutter = create_extruded_polygon_meters(
+            footprint,
+            height + 0.2,
+            f"吊顶切割_{len(cutters):03d}",
+            mat,
+            z_base=z_base - 0.1,
+        )
+        if not cutter:
+            continue
+        collection.objects.link(cutter)
+        cutters.append(cutter)
+
+    region_objects = []
+    for outline in outline_objects:
+        for cutter in cutters:
+            modifier = outline.modifiers.new(f"墙梁切割_{cutter.name}", "BOOLEAN")
+            modifier.operation = "DIFFERENCE"
+            modifier.object = cutter
+            try:
+                modifier.solver = "EXACT"
+            except Exception:
+                pass
+            bpy.context.view_layer.objects.active = outline
+            outline.select_set(True)
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+            outline.select_set(False)
+
+        bpy.ops.object.select_all(action='DESELECT')
+        outline.select_set(True)
+        bpy.context.view_layer.objects.active = outline
+        bpy.ops.mesh.separate(type='LOOSE')
+        separated = [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]
+        for obj in separated:
+            x0, y0, x1, y1 = object_bbox_xy(obj)
+            zs = [(obj.matrix_world @ vert.co).z for vert in obj.data.vertices]
+            if (x1 - x0) * (y1 - y0) < 0.05 or max(zs) - min(zs) < 0.05:
+                bpy.data.objects.remove(obj, do_unlink=True)
+                continue
+            obj.name = f"布尔吊顶块{len(region_objects):03d}"
+            region_objects.append(obj)
+
+    for cutter in cutters:
+        bpy.data.objects.remove(cutter, do_unlink=True)
+
+    print(
+        f"布尔吊顶块: 外轮廓{len(outline_objects)}个, "
+        f"Z={z_base:.3f}..{z_base + height:.3f}, 切割后{len(region_objects)}块"
+    )
+    return region_objects
+
+
 def merge_collinear_beam_lines(beams, coord_tol=5, gap_tol=260):
     groups = defaultdict(list)
     passthrough = []
@@ -1601,6 +1861,7 @@ def main():
 
     json_path = argv[0]
     blend_path = argv[1] if len(argv) > 1 else json_path.rsplit(".", 1)[0] + "_walls.blend"
+    boolean_regions_only = "boolean_regions" in os.path.basename(blend_path)
 
     print(f"加载: {json_path}")
     data = load_json(json_path)
@@ -1608,6 +1869,8 @@ def main():
 
     mat_model = bpy.data.materials.new("白模")
     mat_model.diffuse_color = (0.65, 0.65, 0.65, 1.0)
+    mat_boolean = bpy.data.materials.new("布尔吊顶测试")
+    mat_boolean.diffuse_color = (0.2, 0.55, 0.95, 1.0)
 
     heights = data.get("ceiling_heights", [2800])
     avg_h = round(max(heights)) + 100
@@ -1704,20 +1967,30 @@ def main():
     total += len(beam_objects)
     print(f"梁: 建模{len(beam_objects)}块")
 
-    ceiling_footprints = ceiling_footprints_from_model_objects(
-        wall_objects + beam_objects,
-        ceiling_markers,
-    )
-    ceiling_drop_objects = create_ceiling_drop_boxes(
-        ceiling_markers,
-        avg_h,
-        wall_objects,
-        mat_model,
-        collection,
-        footprints=ceiling_footprints,
-    )
-    total += len(ceiling_drop_objects)
-    print(f"层高块: 建模{len(ceiling_drop_objects)}块")
+    if boolean_regions_only:
+        boolean_regions = create_boolean_ceiling_regions(
+            wall_objects + door_headers,
+            beam_objects,
+            mat_boolean,
+            collection,
+            wall_height=avg_h * 0.001,
+        )
+        total += len(boolean_regions)
+    else:
+        ceiling_footprints = ceiling_footprints_from_model_objects(
+            wall_objects + beam_objects,
+            ceiling_markers,
+        )
+        ceiling_drop_objects = create_ceiling_drop_boxes(
+            ceiling_markers,
+            avg_h,
+            wall_objects,
+            mat_model,
+            collection,
+            footprints=ceiling_footprints,
+        )
+        total += len(ceiling_drop_objects)
+        print(f"层高块: 建模{len(ceiling_drop_objects)}块")
 
     # 缩放 mm→m
     bpy.ops.object.select_all(action='SELECT')
