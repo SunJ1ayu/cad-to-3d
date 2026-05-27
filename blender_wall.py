@@ -560,6 +560,25 @@ def object_bbox_xy(obj):
     return min(xs), min(ys), max(xs), max(ys)
 
 
+def object_footprint_xy(obj):
+    bpy.context.view_layer.update()
+    horizontal_faces = []
+    for face in obj.data.polygons:
+        coords = [obj.matrix_world @ obj.data.vertices[index].co for index in face.vertices]
+        zs = [coord.z for coord in coords]
+        if max(zs) - min(zs) > 0.001:
+            continue
+        horizontal_faces.append((sum(zs) / len(zs), [(coord.x, coord.y) for coord in coords]))
+    if not horizontal_faces:
+        return None
+    _, points = min(horizontal_faces, key=lambda item: item[0])
+    if len(points) < 3:
+        return None
+    if points[0] != points[-1]:
+        points.append(points[0])
+    return points
+
+
 def object_xy_coords(obj):
     bpy.context.view_layer.update()
     return [(co.x, co.y) for co in (obj.matrix_world @ v.co for v in obj.data.vertices)]
@@ -878,15 +897,20 @@ def ceiling_footprints_from_walls_and_beams(data):
     ]
 
 
-def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
-    """从已建好的墙/梁实体中找内部空腔，返回 mm 单位矩形 footprint。"""
+def ceiling_footprints_from_model_objects(blocker_objects, ceiling_markers=None, min_area_sqm=3.0):
+    """用墙/梁真实2D footprint切分外轮廓，返回 mm 单位吊顶 footprint。"""
+    blocker_polygons = []
     bboxes = []
     for obj in blocker_objects:
         if obj.type != "MESH":
             continue
-        x0, y0, x1, y1 = object_bbox_xy(obj)
+        footprint = object_footprint_xy(obj)
+        if not footprint:
+            continue
+        x0, y0, x1, y1 = polygon_bbox(footprint)
         if x1 - x0 <= 0 or y1 - y0 <= 0:
             continue
+        blocker_polygons.append(footprint)
         bboxes.append((x0, y0, x1, y1))
     if not bboxes:
         return []
@@ -901,8 +925,19 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
         if min(bbox[2] - bbox[0], bbox[3] - bbox[1]) <= 1.0
     ]
 
-    xs = sorted({round(value, 6) for bbox in bboxes for value in (bbox[0], bbox[2])})
-    ys = sorted({round(value, 6) for bbox in bboxes for value in (bbox[1], bbox[3])})
+    x_min = min(bbox[0] for bbox in bboxes)
+    y_min = min(bbox[1] for bbox in bboxes)
+    x_max = max(bbox[2] for bbox in bboxes)
+    y_max = max(bbox[3] for bbox in bboxes)
+    exterior_margin = 1.0
+    xs = sorted(
+        {round(value, 6) for bbox in bboxes for value in (bbox[0], bbox[2])}
+        | {round(x_min - exterior_margin, 6), round(x_max + exterior_margin, 6)}
+    )
+    ys = sorted(
+        {round(value, 6) for bbox in bboxes for value in (bbox[1], bbox[3])}
+        | {round(y_min - exterior_margin, 6), round(y_max + exterior_margin, 6)}
+    )
     if len(xs) < 2 or len(ys) < 2:
         return []
 
@@ -1042,8 +1077,8 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
 
     def is_blocked(cx, cy):
         return any(
-            x0 + 1e-6 < cx < x1 - 1e-6 and y0 + 1e-6 < cy < y1 - 1e-6
-            for x0, y0, x1, y1 in bboxes
+            point_in_polygon((cx, cy), poly) or point_on_polygon_boundary((cx, cy), poly, tol=0.001)
+            for poly in blocker_polygons
         )
 
     width = len(xs) - 1
@@ -1134,9 +1169,6 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
                     seen.add(neighbor)
                     queue.append(neighbor)
 
-        if touches_boundary:
-            continue
-
         area = sum((xs[i + 1] - xs[i]) * (ys[j + 1] - ys[j]) for i, j in component)
         if area < min_area_sqm:
             continue
@@ -1144,10 +1176,14 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
         boundary = component_boundary(component)
         if not boundary:
             continue
+        if touches_boundary:
+            continue
         footprints.append(expand_boundary_coverage([(x * 1000, y * 1000) for x, y in boundary]))
 
+    raw_count = len(footprints)
     footprints = merge_coverage_footprints(footprints)
     footprints = expand_to_adjacent_coverage_strips(footprints)
+    print(f"吊顶2D分区: 原始{raw_count}块，覆盖扩展后{len(footprints)}块")
     return sorted(footprints, key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]))
 
 
@@ -1668,7 +1704,10 @@ def main():
     total += len(beam_objects)
     print(f"梁: 建模{len(beam_objects)}块")
 
-    ceiling_footprints = ceiling_footprints_from_model_objects(wall_objects + beam_objects)
+    ceiling_footprints = ceiling_footprints_from_model_objects(
+        wall_objects + beam_objects,
+        ceiling_markers,
+    )
     ceiling_drop_objects = create_ceiling_drop_boxes(
         ceiling_markers,
         avg_h,
