@@ -1333,8 +1333,17 @@ def difference_footprints_from_outline(outline_polygon, structural_footprints, m
                 xs.add(round(x, 6))
             if outline_bbox[1] - 0.001 <= y <= outline_bbox[3] + 0.001:
                 ys.add(round(y, 6))
-    xs = sorted(xs)
-    ys = sorted(ys)
+    def snap_axis_values(values, tol=0.01):
+        snapped = []
+        for value in sorted(values):
+            if snapped and abs(value - snapped[-1]) <= tol:
+                snapped[-1] = (snapped[-1] + value) / 2
+            else:
+                snapped.append(value)
+        return snapped
+
+    xs = snap_axis_values(xs)
+    ys = snap_axis_values(ys)
     if len(xs) < 2 or len(ys) < 2:
         return []
 
@@ -2105,10 +2114,7 @@ def main():
     print(f"梁: 建模{len(beam_objects)}块")
 
     if boolean_regions_only:
-        structural_objects = [
-            obj for obj in wall_objects
-            if not obj.name.startswith("窗洞")
-        ] + door_headers + beam_objects
+        structural_objects = wall_objects + door_headers + beam_objects
         outer_outline = create_outer_outline_from_wall_lines(data)
         boolean_regions = create_structural_difference_ceiling_regions(
             data,
