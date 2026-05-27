@@ -698,18 +698,106 @@ def object_xy_coords(obj):
     return [(co.x, co.y) for co in (obj.matrix_world @ v.co for v in obj.data.vertices)]
 
 
-def bboxes_overlap(a, b):
-    return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
-
-
-def point_in_bbox_xy(point, bbox, tol=0.02):
-    x, y = point
-    return bbox[0] - tol <= x <= bbox[2] + tol and bbox[1] - tol <= y <= bbox[3] + tol
-
-
-def create_window_infill_boxes(win, height, mat):
+def match_window_end_walls(win, walls, endpoint_tol=80, center_tol=80):
     length = win.get("opening_length")
-    frame_width = win.get("frame_width") or 240
+    if not length:
+        return None
+
+    angle = math.radians(win.get("rotation", 0))
+    ux, uy = math.cos(angle), math.sin(angle)
+    nx, ny = -uy, ux
+    x, y = win["position"]
+    end_targets = [
+        (x - ux * length / 2, y - uy * length / 2),
+        (x + ux * length / 2, y + uy * length / 2),
+    ]
+    matches = []
+
+    for target in end_targets:
+        best = None
+        for wall in walls:
+            sx, sy = wall["start"]
+            ex, ey = wall["end"]
+            dx, dy = ex - sx, ey - sy
+            wall_len = math.hypot(dx, dy)
+            if wall_len <= 20:
+                continue
+            wx, wy = dx / wall_len, dy / wall_len
+            if abs(wx * nx + wy * ny) < 0.98:
+                continue
+
+            mx, my = (sx + ex) / 2, (sy + ey) / 2
+            along_delta = abs((mx - target[0]) * ux + (my - target[1]) * uy)
+            center_delta = abs((mx - x) * nx + (my - y) * ny)
+            if along_delta > endpoint_tol or center_delta > center_tol:
+                continue
+
+            score = (along_delta, center_delta, -wall_len)
+            if best is None or score < best["score"]:
+                best = {
+                    "score": score,
+                    "depth": wall_len,
+                    "center_delta": (mx - x) * nx + (my - y) * ny,
+                }
+        if best:
+            matches.append(best)
+
+    if len(matches) < 2:
+        return None
+
+    depth = sum(match["depth"] for match in matches) / len(matches)
+    center_offset = sum(match["center_delta"] for match in matches) / len(matches)
+    return {
+        "depth": depth,
+        "center": (x + nx * center_offset, y + ny * center_offset),
+        "source": "end_walls",
+    }
+
+
+def match_window_wall_bbox(win, wall_objects, margin=600):
+    length = win.get("opening_length")
+    if not length:
+        return None
+
+    angle = math.radians(win.get("rotation", 0))
+    axis_x = (math.cos(angle), math.sin(angle))
+    x, y = win["position"]
+    half = length / 2
+    horizontal = abs(axis_x[0]) >= abs(axis_x[1])
+    best = None
+
+    for wall in wall_objects:
+        x0, y0, x1, y1 = [v * 1000 for v in object_bbox_xy(wall)]
+        if horizontal:
+            span0, span1 = x - half, x + half
+            overlap = min(span1, x1) - max(span0, x0)
+            perp_dist = 0 if y0 <= y <= y1 else min(abs(y - y0), abs(y - y1))
+            wall_depth = y1 - y0
+            center = (x, (y0 + y1) / 2)
+        else:
+            span0, span1 = y - half, y + half
+            overlap = min(span1, y1) - max(span0, y0)
+            perp_dist = 0 if x0 <= x <= x1 else min(abs(x - x0), abs(x - x1))
+            wall_depth = x1 - x0
+            center = ((x0 + x1) / 2, y)
+
+        if overlap <= min(length * 0.2, 100) or perp_dist > margin or wall_depth <= 20:
+            continue
+
+        score = (perp_dist, -overlap, wall_depth)
+        if best is None or score < best["score"]:
+            best = {
+                "score": score,
+                "depth": wall_depth,
+                "center": center,
+                "bbox": (x0, y0, x1, y1),
+            }
+
+    return best
+
+
+def create_window_infill_boxes(win, height, mat, wall_match=None):
+    length = win.get("opening_length")
     sill = win.get("sill_height")
     window_height = win.get("window_height")
     if not length or sill is None or window_height is None:
@@ -718,7 +806,8 @@ def create_window_infill_boxes(win, height, mat):
     angle = math.radians(win.get("rotation", 0))
     axis_x = (math.cos(angle), math.sin(angle))
     axis_y = (-axis_x[1], axis_x[0])
-    x, y = win["position"]
+    x, y = wall_match["center"] if wall_match else win["position"]
+    depth = wall_match["depth"] if wall_match else max(win.get("frame_width") or 0, 240)
     top_z = sill + window_height
     specs = []
     if sill > 20:
@@ -733,7 +822,7 @@ def create_window_infill_boxes(win, height, mat):
             axis_x,
             axis_y,
             length,
-            frame_width,
+            depth,
             box_height,
             label,
         )
@@ -864,24 +953,14 @@ def bbox_center(bbox):
     return ((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)
 
 
-def build_ceiling_resolver(data, fallback_height):
+def collect_ceiling_markers(data):
     markers = []
     for ann in data.get("annotations", []):
         heights = ann.get("parsed", {}).get("ceiling_height")
         pos = ann.get("position")
         if heights and pos:
             markers.append((pos[0], pos[1], round(heights[0])))
-
-    def ceiling_at(point):
-        if not markers:
-            return fallback_height
-        x, y = point
-        return min(
-            markers,
-            key=lambda marker: (x - marker[0]) ** 2 + (y - marker[1]) ** 2,
-        )[2]
-
-    return ceiling_at, markers
+    return markers
 
 
 def create_ceiling_drop_boxes(markers, wall_height, wall_objects, mat, collection, footprints=None):
@@ -971,44 +1050,6 @@ def create_ceiling_drop_boxes(markers, wall_height, wall_objects, mat, collectio
         print(f"层高块{i}: CH={ceiling_height}mm, 补高{size_z}mm")
 
     return objects
-
-
-def ceiling_footprints_from_walls_and_beams(data):
-    beam_lines = [
-        beam
-        for beam in data.get("beams", [])
-        if beam.get("type") == "beam" and beam.get("start") and beam.get("end")
-    ]
-    beam_lines = merge_collinear_beam_lines(beam_lines)
-    wall_polygons = []
-    for walls in [
-        [w for w in data.get("walls", []) if not w.get("demolishable")],
-        [w for w in data.get("walls", []) if w.get("demolishable")],
-    ]:
-        wall_polygons.extend(find_closed_polygons(walls))
-
-    beam_polygons = []
-    beam_pairs, _ = pair_parallel_walls(beam_lines, min_thickness=30, max_thickness=600)
-    for a_idx, b_idx in beam_pairs:
-        beam_polygons.append(
-            pair_to_polygon(
-                make_segment(beam_lines[a_idx]),
-                make_segment(beam_lines[b_idx]),
-                extend_caps=False,
-            )
-        )
-
-    blocked_polygons = wall_polygons + beam_polygons
-    blocked_bboxes = [polygon_bbox(poly) for poly in blocked_polygons]
-    edges = data.get("walls", []) + beam_lines
-    polygons = find_closed_polygons(edges)
-    return [
-        poly for poly in polygons
-        if len(poly) >= 4
-        and polygon_area(poly) >= 3_000_000
-        and not any(same_bbox(polygon_bbox(poly), blocked_bbox) for blocked_bbox in blocked_bboxes)
-        and not any(point_in_polygon(polygon_center(poly), blocked) for blocked in blocked_polygons)
-    ]
 
 
 def ceiling_footprints_from_model_objects(blocker_objects, ceiling_markers=None, min_area_sqm=3.0):
@@ -1715,102 +1756,6 @@ def create_space_outlines_from_boundary_objects(data, boundary_objects):
     return spaces, f"space_outlines_from_{outline_source}"
 
 
-def create_boolean_ceiling_regions(outline_polygon, cutter_objects, mat, collection, wall_height):
-    if not outline_polygon:
-        return []
-
-    beam_bottoms = []
-    beam_objects = [obj for obj in cutter_objects if obj.name.startswith("梁")]
-    for obj in beam_objects:
-        if obj.type != "MESH":
-            continue
-        zs = [(obj.matrix_world @ vert.co).z for vert in obj.data.vertices]
-        if zs:
-            beam_bottoms.append(min(zs))
-    z_base = min(beam_bottoms) if beam_bottoms else wall_height - 0.4
-    height = max(wall_height - z_base, 0.2)
-
-    outline_objects = []
-    obj = create_extruded_polygon_meters(
-        outline_polygon,
-        height,
-        "吊顶外轮廓_000",
-        mat,
-        z_base=z_base,
-    )
-    if obj:
-        collection.objects.link(obj)
-        outline_objects.append(obj)
-
-    cutters = []
-    for source in cutter_objects:
-        sx0, sy0, sx1, sy1 = object_bbox_xy(source)
-        if sx1 <= sx0 or sy1 <= sy0:
-            continue
-        overlap = 0.08
-        cx0, cx1 = sx0 - overlap, sx1 + overlap
-        cy0, cy1 = sy0 - overlap, sy1 + overlap
-        footprint = [
-            (cx0, cy0),
-            (cx1, cy0),
-            (cx1, cy1),
-            (cx0, cy1),
-            (cx0, cy0),
-        ]
-        cutter = create_extruded_polygon_meters(
-            footprint,
-            height + 0.2,
-            f"吊顶切割_{len(cutters):03d}",
-            mat,
-            z_base=z_base - 0.1,
-        )
-        if not cutter:
-            continue
-        collection.objects.link(cutter)
-        cutters.append(cutter)
-
-    region_objects = []
-    for outline in outline_objects:
-        for cutter in cutters:
-            modifier = outline.modifiers.new(f"墙梁切割_{cutter.name}", "BOOLEAN")
-            modifier.operation = "DIFFERENCE"
-            modifier.object = cutter
-            try:
-                modifier.solver = "EXACT"
-            except Exception:
-                pass
-            bpy.context.view_layer.objects.active = outline
-            outline.select_set(True)
-            bpy.ops.object.modifier_apply(modifier=modifier.name)
-            outline.select_set(False)
-
-        bpy.ops.object.select_all(action='DESELECT')
-        outline.select_set(True)
-        bpy.context.view_layer.objects.active = outline
-        bpy.ops.mesh.separate(type='LOOSE')
-        separated = [obj for obj in bpy.context.selected_objects if obj.type == "MESH"]
-        for obj in separated:
-            if not obj.data.vertices:
-                bpy.data.objects.remove(obj, do_unlink=True)
-                continue
-            x0, y0, x1, y1 = object_bbox_xy(obj)
-            zs = [(obj.matrix_world @ vert.co).z for vert in obj.data.vertices]
-            if (x1 - x0) * (y1 - y0) < 0.05 or max(zs) - min(zs) < 0.05:
-                bpy.data.objects.remove(obj, do_unlink=True)
-                continue
-            obj.name = f"布尔吊顶块{len(region_objects):03d}"
-            region_objects.append(obj)
-
-    for cutter in cutters:
-        bpy.data.objects.remove(cutter, do_unlink=True)
-
-    print(
-        f"布尔吊顶块: 外轮廓{len(outline_objects)}个, "
-        f"Z={z_base:.3f}..{z_base + height:.3f}, 切割后{len(region_objects)}块"
-    )
-    return region_objects
-
-
 def merge_collinear_beam_lines(beams, coord_tol=5, gap_tol=260):
     groups = defaultdict(list)
     passthrough = []
@@ -1893,72 +1838,39 @@ def _merge_beam_span(axis, spans):
     }
 
 
-def apply_window_openings(wall_objects, windows, collection, wall_height, mat):
-    cutters = []
-    applied = 0
+def apply_window_openings(wall_objects, windows, collection, wall_height, mat, wall_lines=None):
     infill_objects = []
     for i, win in enumerate(windows):
         length = win.get("opening_length")
-        frame_width = win.get("frame_width") or 240
         sill = win.get("sill_height")
         window_height = win.get("window_height")
         if not length or sill is None or window_height is None or window_height <= 0:
             print(f"窗洞{i}: 跳过，缺少尺寸/高度")
             continue
 
-        angle = math.radians(win.get("rotation", 0))
-        axis_x = (math.cos(angle), math.sin(angle))
-        axis_y = (-axis_x[1], axis_x[0])
-        x, y = win["position"]
-        cutter = create_oriented_box(
-            (x, y, sill + window_height / 2),
-            axis_x,
-            axis_y,
-            length + 80,
-            frame_width + 700,
-            window_height + 40,
-            f"窗洞切割_{i:03d}",
-        )
-        collection.objects.link(cutter)
-        cutter.scale = (0.001, 0.001, 0.001)
-        cutter_bbox = object_bbox_xy(cutter)
+        wall_match = match_window_end_walls(win, wall_lines or [])
+        if not wall_match:
+            wall_match = match_window_wall_bbox(win, wall_objects)
+        boxes = create_window_infill_boxes(win, wall_height, mat, wall_match)
+        for j, box in enumerate(boxes):
+            box.name = f"窗洞{i:03d}_{box.name}_{j:03d}"
+            collection.objects.link(box)
+            box.scale = (0.001, 0.001, 0.001)
+            snap_box_xy_to_walls(box, wall_objects)
+            infill_objects.append(box)
 
-        hit = 0
-        for obj in wall_objects:
-            wall_bbox = object_bbox_xy(obj)
-            if not point_in_bbox_xy((x * 0.001, y * 0.001), wall_bbox):
-                continue
-            if not bboxes_overlap(wall_bbox, cutter_bbox):
-                continue
-            modifier = obj.modifiers.new(f"窗洞_{i:03d}", "BOOLEAN")
-            modifier.operation = "DIFFERENCE"
-            modifier.object = cutter
-            try:
-                modifier.solver = "EXACT"
-            except Exception:
-                pass
-            bpy.context.view_layer.objects.active = obj
-            obj.select_set(True)
-            bpy.ops.object.modifier_apply(modifier=modifier.name)
-            obj.select_set(False)
-            hit += 1
+        if wall_match:
+            print(
+                f"窗洞{i}: 长{length}mm, 窗台{sill}mm, 窗高{window_height}mm, "
+                f"墙厚{wall_match['depth']:.0f}mm, 补{len(boxes)}块窗上下墙"
+            )
+        else:
+            print(
+                f"窗洞{i}: 长{length}mm, 窗台{sill}mm, 窗高{window_height}mm, "
+                f"未匹配墙体，按默认厚度补{len(boxes)}块窗上下墙"
+            )
 
-        cutters.append(cutter)
-        applied += hit
-        print(f"窗洞{i}: 长{length}mm, 窗台{sill}mm, 窗高{window_height}mm, 命中{hit}个墙体")
-        if hit == 0:
-            boxes = create_window_infill_boxes(win, wall_height, mat)
-            for j, box in enumerate(boxes):
-                box.name = f"窗洞{i:03d}_{box.name}_{j:03d}"
-                collection.objects.link(box)
-                box.scale = (0.001, 0.001, 0.001)
-                snap_box_xy_to_walls(box, wall_objects)
-                infill_objects.append(box)
-            print(f"窗洞{i}: 未命中墙体，补{len(boxes)}块窗上下墙")
-
-    for cutter in cutters:
-        bpy.data.objects.remove(cutter, do_unlink=True)
-    return applied, infill_objects
+    return 0, infill_objects
 
 
 def create_door_header_boxes(doors, wall_height, mat, collection):
@@ -2240,7 +2152,7 @@ def main():
 
     heights = data.get("ceiling_heights", [2800])
     avg_h = round(max(heights)) + 100
-    ceiling_at, ceiling_markers = build_ceiling_resolver(data, avg_h)
+    ceiling_markers = collect_ceiling_markers(data)
     print(f"统一墙高: {avg_h}mm，局部层高标注: {len(ceiling_markers)}个")
 
     collection = bpy.data.collections.new("建筑构件")
@@ -2303,18 +2215,17 @@ def main():
                 wall_objects.append(obj)
                 total += 1
 
-    clean_outline_wall_objects = list(wall_objects)
-
-    window_hits, window_infill = apply_window_openings(
+    _, window_infill = apply_window_openings(
         wall_objects,
         data.get("windows", []),
         collection,
         avg_h,
         mat_model,
+        data.get("walls", []),
     )
     total += len(window_infill)
     wall_objects.extend(window_infill)
-    print(f"窗洞布尔: 命中{window_hits}次，补窗上下墙{len(window_infill)}块")
+    print(f"窗洞上下墙: 补{len(window_infill)}块")
 
     door_headers = create_door_header_boxes(
         data.get("doors", []),
