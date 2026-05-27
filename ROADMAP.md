@@ -11,6 +11,29 @@ The project has reached a minimal MVP:
 
 The main open risk is generalization: the current implementation is proven on one CAD file, but not yet on multiple real CAD variants.
 
+## Latest Progress
+
+As of 2026-05-27:
+
+- Replaced window boolean cutting with direct lower/upper wall generation.
+- Window wall depth is inferred from the two end wall lines instead of using the CAD block `frame_width` as the primary depth.
+- Removed unused Blender boolean ceiling code and other confirmed dead helpers.
+- Simplified ceiling marker collection by removing the unused `ceiling_at` resolver.
+- Regenerated `output_boolean_regions.blend` and exported `output_boolean_regions.fbx` from the current script.
+- Pushed the latest model export to GitHub:
+  - `output_boolean_regions.fbx`: https://github.com/SunJ1ayu/cad-to-3d/raw/master/output_boolean_regions.fbx
+
+Current verified generation summary:
+
+```text
+walls: 82 parsed, 17 wall regions built
+windows: 6 parsed, 6 wall-thickness matches, 11 lower/upper wall boxes built
+doors: 5 parsed, 2 headers built, 3 skipped
+beams: 18 parsed, 9 built
+ceilings: 7 markers, 10 regions built
+total Blender objects: 49
+```
+
 ## Recommended Sequence
 
 ### Phase 1: Validate With More CAD Files
