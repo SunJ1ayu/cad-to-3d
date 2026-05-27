@@ -564,12 +564,15 @@ def extend_beam_ends_to_walls(obj, wall_objects, tol=0.30):
             if min(cross1, max(ay, by)) - max(cross0, min(ay, by)) > 0:
                 wall_boundaries.append(ax)
 
-    lower_candidates = [
+    already_touching_tol = 0.02
+    lower_already_touches_wall = any(abs(end - end0) <= already_touching_tol for end in wall_boundaries)
+    upper_already_touches_wall = any(abs(end - end1) <= already_touching_tol for end in wall_boundaries)
+    lower_candidates = [] if lower_already_touches_wall else [
         end
         for end in wall_boundaries
         if 0 < end0 - end <= tol
     ]
-    upper_candidates = [
+    upper_candidates = [] if upper_already_touches_wall else [
         end
         for end in wall_boundaries
         if 0 < end - end1 <= tol
