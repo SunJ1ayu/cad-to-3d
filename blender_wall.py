@@ -1602,11 +1602,31 @@ def snap_polygons_to_footprint_edges(polygons, footprints, tol=0.005):
     return snapped
 
 
+def ceiling_height_for_region(region, ceiling_markers, fallback_height):
+    if not ceiling_markers:
+        return fallback_height
+
+    marker_heights = [
+        height
+        for x_mm, y_mm, height in ceiling_markers
+        if point_in_polygon((x_mm * 0.001, y_mm * 0.001), region)
+    ]
+    if marker_heights:
+        return min(marker_heights)
+
+    cx, cy = polygon_center(region)
+    return min(
+        ceiling_markers,
+        key=lambda marker: (cx - marker[0] * 0.001) ** 2 + (cy - marker[1] * 0.001) ** 2,
+    )[2]
+
+
 def create_structural_difference_ceiling_regions(
     data,
     outline_polygons,
     outline_source,
     structural_objects,
+    ceiling_markers,
     mat,
     collection,
     wall_height,
@@ -1623,8 +1643,7 @@ def create_structural_difference_ceiling_regions(
         zs = [(obj.matrix_world @ vert.co).z for vert in obj.data.vertices]
         if zs:
             beam_bottoms.append(min(zs))
-    z_base = min(beam_bottoms) if beam_bottoms else wall_height - 0.4
-    block_height = max(wall_height - z_base, 0.2)
+    fallback_z_base = min(beam_bottoms) if beam_bottoms else wall_height - 0.4
 
     structural_footprints = structural_footprints_from_objects(data, structural_objects)
     beam_footprints = structural_footprints_from_objects(
@@ -1640,6 +1659,16 @@ def create_structural_difference_ceiling_regions(
 
     objects = []
     for i, region in enumerate(regions):
+        ceiling_height = ceiling_height_for_region(
+            region,
+            ceiling_markers,
+            round(fallback_z_base * 1000),
+        )
+        z_base = ceiling_height * 0.001
+        block_height = wall_height - z_base
+        if block_height <= 0.02:
+            print(f"布尔吊顶块{i:03d}: 跳过，CH={ceiling_height}mm 已到顶")
+            continue
         obj = create_extruded_polygon_meters(
             region,
             block_height,
@@ -1651,10 +1680,11 @@ def create_structural_difference_ceiling_regions(
             continue
         collection.objects.link(obj)
         objects.append(obj)
+        print(f"布尔吊顶块{i:03d}: CH={ceiling_height}mm, Z={z_base:.3f}..{wall_height:.3f}")
 
     print(
         f"2D结构差集吊顶块: 外轮廓{len(outline_polygons)}个({outline_source}), 结构footprint{len(structural_footprints)}个, "
-        f"Z={z_base:.3f}..{z_base + block_height:.3f}, 原始{len(raw_regions)}块, 清理后{len(objects)}块"
+        f"原始{len(raw_regions)}块, 清理后{len(objects)}块"
     )
     return objects
 
@@ -2314,6 +2344,7 @@ def main():
             outer_outlines,
             outline_source,
             structural_objects,
+            ceiling_markers,
             mat_boolean,
             collection,
             wall_height=avg_h * 0.001,
