@@ -765,7 +765,12 @@ def create_ceiling_drop_boxes(markers, wall_height, wall_objects, mat, collectio
     objects = []
     if footprints:
         for i, footprint in enumerate(footprints):
-            ceiling_height = nearest_ceiling_height(polygon_center(footprint))
+            marker_heights = [
+                marker[2]
+                for marker in markers
+                if point_in_polygon((marker[0], marker[1]), footprint)
+            ]
+            ceiling_height = min(marker_heights) if marker_heights else nearest_ceiling_height(polygon_center(footprint))
             if ceiling_height >= wall_height:
                 print(f"层高块{i}: 跳过，CH={ceiling_height}mm 已到统一墙高")
                 continue
@@ -929,6 +934,56 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
             (x0 * 1000, y0 * 1000),
         ]
 
+    def rect_from_bbox(bbox):
+        x0, y0, x1, y1 = bbox
+        return [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+
+    def should_merge_coverage(a, b, exterior_y1):
+        ax0, ay0, ax1, ay1 = polygon_bbox(a)
+        bx0, by0, bx1, by1 = polygon_bbox(b)
+        touches_top_boundary = abs(ay1 - exterior_y1) <= 300 or abs(by1 - exterior_y1) <= 300
+        if not touches_top_boundary:
+            return False
+
+        gap_x = max(bx0 - ax1, ax0 - bx1, 0)
+        gap_y = max(by0 - ay1, ay0 - by1, 0)
+        overlap_x = min(ax1, bx1) - max(ax0, bx0)
+        overlap_y = min(ay1, by1) - max(ay0, by0)
+        separated_x = ax1 <= bx0 or bx1 <= ax0
+        near_x = separated_x and gap_x <= 260 and overlap_y > 500
+        if not near_x:
+            return False
+
+        ux0, uy0, ux1, uy1 = min(ax0, bx0), min(ay0, by0), max(ax1, bx1), max(ay1, by1)
+        union_area = (ux1 - ux0) * (uy1 - uy0)
+        parts_area = (ax1 - ax0) * (ay1 - ay0) + (bx1 - bx0) * (by1 - by0)
+        return union_area <= parts_area * 1.35
+
+    def merge_coverage_footprints(items):
+        merged = list(items)
+        exterior_y1 = max(polygon_bbox(item)[3] for item in merged)
+        changed = True
+        while changed:
+            changed = False
+            for i in range(len(merged)):
+                for j in range(i + 1, len(merged)):
+                    if not should_merge_coverage(merged[i], merged[j], exterior_y1):
+                        continue
+                    ax0, ay0, ax1, ay1 = polygon_bbox(merged[i])
+                    bx0, by0, bx1, by1 = polygon_bbox(merged[j])
+                    merged[i] = rect_from_bbox((
+                        min(ax0, bx0),
+                        min(ay0, by0),
+                        max(ax1, bx1),
+                        max(ay1, by1),
+                    ))
+                    merged.pop(j)
+                    changed = True
+                    break
+                if changed:
+                    break
+        return merged
+
     def is_blocked(cx, cy):
         return any(
             x0 + 1e-6 < cx < x1 - 1e-6 and y0 + 1e-6 < cy < y1 - 1e-6
@@ -1035,6 +1090,7 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
             continue
         footprints.append(expand_boundary_coverage([(x * 1000, y * 1000) for x, y in boundary]))
 
+    footprints = merge_coverage_footprints(footprints)
     return sorted(footprints, key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]))
 
 
