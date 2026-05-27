@@ -1340,7 +1340,7 @@ def difference_footprints_from_outline(outline_polygon, structural_footprints, m
                 xs.add(round(x, 6))
             if outline_bbox[1] - 0.001 <= y <= outline_bbox[3] + 0.001:
                 ys.add(round(y, 6))
-    def snap_axis_values(values, tol=0.01):
+    def snap_axis_values(values, tol=0.03):
         snapped = []
         for value in sorted(values):
             if snapped and abs(value - snapped[-1]) <= tol:
