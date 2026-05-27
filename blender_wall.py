@@ -523,6 +523,81 @@ def snap_single_line_beam_far_side(obj, target_objects, tol=0.02):
     obj.data.update()
 
 
+def extend_beam_ends_to_walls(obj, wall_objects, tol=0.30):
+    """Extend beam end caps to nearby wall boundary points when CAD lines stop at the near face."""
+    bpy.context.view_layer.update()
+    points = object_xy_coords(obj)
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    width_x = max(xs) - min(xs)
+    width_y = max(ys) - min(ys)
+    axis = "y" if width_y >= width_x else "x"
+    sx = obj.scale.x if obj.scale.x else 1
+    sy = obj.scale.y if obj.scale.y else 1
+
+    wall_edges = []
+    for wall in wall_objects:
+        footprint = object_footprint_xy(wall)
+        if not footprint:
+            continue
+        pts = footprint[:-1] if footprint[0] == footprint[-1] else footprint
+        for i, a in enumerate(pts):
+            b = pts[(i + 1) % len(pts)]
+            wall_edges.append((a, b))
+
+    if axis == "y":
+        cross0, cross1 = min(xs), max(xs)
+        end0, end1 = min(ys), max(ys)
+        wall_boundaries = []
+        for (ax, ay), (bx, by) in wall_edges:
+            if abs(ay - by) > 0.001:
+                continue
+            if min(cross1, max(ax, bx)) - max(cross0, min(ax, bx)) > 0:
+                wall_boundaries.append(ay)
+    else:
+        cross0, cross1 = min(ys), max(ys)
+        end0, end1 = min(xs), max(xs)
+        wall_boundaries = []
+        for (ax, ay), (bx, by) in wall_edges:
+            if abs(ax - bx) > 0.001:
+                continue
+            if min(cross1, max(ay, by)) - max(cross0, min(ay, by)) > 0:
+                wall_boundaries.append(ax)
+
+    lower_candidates = [
+        end
+        for end in wall_boundaries
+        if 0 < end0 - end <= tol
+    ]
+    upper_candidates = [
+        end
+        for end in wall_boundaries
+        if 0 < end - end1 <= tol
+    ]
+    targets = [
+        min(lower_candidates) if lower_candidates else end0,
+        max(upper_candidates) if upper_candidates else end1,
+    ]
+
+    if targets == [end0, end1]:
+        return
+
+    for vert in obj.data.vertices:
+        world_x = vert.co.x * sx
+        world_y = vert.co.y * sy
+        if axis == "y":
+            if abs(world_y - end0) < 0.001:
+                vert.co.y = targets[0] / sy
+            elif abs(world_y - end1) < 0.001:
+                vert.co.y = targets[1] / sy
+        else:
+            if abs(world_x - end0) < 0.001:
+                vert.co.x = targets[0] / sx
+            elif abs(world_x - end1) < 0.001:
+                vert.co.x = targets[1] / sx
+    obj.data.update()
+
+
 def create_oriented_box(center, axis_x, axis_y, size_x, size_y, size_z, name):
     cx, cy, cz = center
     ux, uy = axis_x
@@ -1509,6 +1584,24 @@ def clean_ceiling_regions(
     )
 
 
+def snap_polygons_to_footprint_edges(polygons, footprints, tol=0.005):
+    anchor_xs = [x for footprint in footprints for x, _ in footprint]
+    anchor_ys = [y for footprint in footprints for _, y in footprint]
+    snapped = []
+    for polygon in polygons:
+        new_poly = []
+        for x, y in polygon:
+            nearby_x = [anchor for anchor in anchor_xs if abs(anchor - x) <= tol]
+            nearby_y = [anchor for anchor in anchor_ys if abs(anchor - y) <= tol]
+            if nearby_x:
+                x = min(nearby_x, key=lambda anchor: abs(anchor - x))
+            if nearby_y:
+                y = min(nearby_y, key=lambda anchor: abs(anchor - y))
+            new_poly.append((x, y))
+        snapped.append(simplify_orthogonal_polygon(new_poly))
+    return snapped
+
+
 def create_structural_difference_ceiling_regions(
     data,
     outline_polygons,
@@ -1534,10 +1627,16 @@ def create_structural_difference_ceiling_regions(
     block_height = max(wall_height - z_base, 0.2)
 
     structural_footprints = structural_footprints_from_objects(data, structural_objects)
+    beam_footprints = structural_footprints_from_objects(
+        data,
+        [obj for obj in structural_objects if obj.name.startswith("梁")],
+        include_data_footprints=False,
+    )
     raw_regions = []
     for outline_polygon in outline_polygons:
         raw_regions.extend(difference_footprints_from_outline(outline_polygon, structural_footprints))
     regions = clean_ceiling_regions(raw_regions)
+    regions = snap_polygons_to_footprint_edges(regions, beam_footprints)
 
     objects = []
     for i, region in enumerate(regions):
@@ -1984,6 +2083,7 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
                 tol=0.06,
                 constrain_bbox=bbox_from_xy_points(footprint[:-1], scale=0.001, margin=0.06),
             )
+        extend_beam_ends_to_walls(obj, wall_objects)
         objects.append(obj)
         width_label = f", 梁宽{beam_width}mm" if beam_width else ""
         print(f"{name}: 梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm{width_label}")
@@ -2034,6 +2134,7 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
         obj.scale = (0.001, 0.001, 0.001)
         snap_single_line_beam_ends(obj, wall_objects + objects, tol=0.02)
         snap_single_line_beam_far_side(obj, wall_objects + objects, tol=0.02)
+        extend_beam_ends_to_walls(obj, wall_objects)
         obj["single_line_beam_fallback"] = True
         objects.append(obj)
         print(f"梁{original_idx}: 未配对单线兜底，梁底标高{beam_bottom}mm, 梁厚{beam_depth:.0f}mm, 梁宽{beam_width}mm")
