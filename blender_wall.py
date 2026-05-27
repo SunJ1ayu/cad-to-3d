@@ -1334,23 +1334,42 @@ def difference_footprints_from_outline(outline_polygon, structural_footprints, m
     outline_bbox = polygon_bbox(outline_polygon)
     xs = {round(outline_bbox[0], 6), round(outline_bbox[2], 6)}
     ys = {round(outline_bbox[1], 6), round(outline_bbox[3], 6)}
+    anchor_xs = set()
+    anchor_ys = set()
     for poly in structural_footprints:
         for x, y in poly:
             if outline_bbox[0] - 0.001 <= x <= outline_bbox[2] + 0.001:
                 xs.add(round(x, 6))
+                anchor_xs.add(round(x, 6))
             if outline_bbox[1] - 0.001 <= y <= outline_bbox[3] + 0.001:
                 ys.add(round(y, 6))
-    def snap_axis_values(values, tol=0.03):
+                anchor_ys.add(round(y, 6))
+
+    def snap_axis_values(values, anchors, tol=0.03):
         snapped = []
-        for value in sorted(values):
-            if snapped and abs(value - snapped[-1]) <= tol:
-                snapped[-1] = (snapped[-1] + value) / 2
+        cluster = []
+
+        def flush_cluster():
+            if not cluster:
+                return
+            midpoint = sum(cluster) / len(cluster)
+            anchor_candidates = [value for value in cluster if value in anchors]
+            if anchor_candidates:
+                snapped.append(min(anchor_candidates, key=lambda value: abs(value - midpoint)))
             else:
-                snapped.append(value)
+                snapped.append(midpoint)
+
+        for value in sorted(values):
+            if cluster and abs(value - cluster[-1]) > tol:
+                flush_cluster()
+                cluster = [value]
+            else:
+                cluster.append(value)
+        flush_cluster()
         return snapped
 
-    xs = snap_axis_values(xs)
-    ys = snap_axis_values(ys)
+    xs = snap_axis_values(xs, anchor_xs)
+    ys = snap_axis_values(ys, anchor_ys)
     if len(xs) < 2 or len(ys) < 2:
         return []
 
