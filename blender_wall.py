@@ -1440,7 +1440,22 @@ def difference_footprints_from_outline(outline_polygon, structural_footprints, m
     return sorted(regions, key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]))
 
 
-def clean_ceiling_regions(regions, min_area_sqm=2.0, min_width=0.35):
+def touches_outline_corner(region, outline_polygon, tol=0.02):
+    rx0, ry0, rx1, ry1 = polygon_bbox(region)
+    ox0, oy0, ox1, oy1 = polygon_bbox(outline_polygon)
+    touches_left = abs(rx0 - ox0) <= tol
+    touches_right = abs(rx1 - ox1) <= tol
+    touches_bottom = abs(ry0 - oy0) <= tol
+    touches_top = abs(ry1 - oy1) <= tol
+    return (
+        (touches_left and touches_top)
+        or (touches_left and touches_bottom)
+        or (touches_right and touches_top)
+        or (touches_right and touches_bottom)
+    )
+
+
+def clean_ceiling_regions(regions, outline_polygon=None, min_area_sqm=2.0, min_width=0.35):
     cleaned = []
     for region in regions:
         simplified = simplify_orthogonal_polygon(region)
@@ -1448,6 +1463,8 @@ def clean_ceiling_regions(regions, min_area_sqm=2.0, min_width=0.35):
             continue
         x0, y0, x1, y1 = polygon_bbox(simplified)
         if min(x1 - x0, y1 - y0) < min_width:
+            continue
+        if outline_polygon and touches_outline_corner(simplified, outline_polygon):
             continue
         cleaned.append(simplified)
     return sorted(
@@ -1472,7 +1489,7 @@ def create_structural_difference_ceiling_regions(data, outline_polygon, structur
 
     structural_footprints = structural_footprints_from_objects(data, structural_objects)
     raw_regions = difference_footprints_from_outline(outline_polygon, structural_footprints)
-    regions = clean_ceiling_regions(raw_regions)
+    regions = clean_ceiling_regions(raw_regions, outline_polygon=outline_polygon)
 
     objects = []
     for i, region in enumerate(regions):
