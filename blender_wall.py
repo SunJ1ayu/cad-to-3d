@@ -1239,6 +1239,207 @@ def create_clean_outline_from_wall_lines(data):
     return [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
 
 
+def create_outer_outline_from_wall_lines(data):
+    clean_outline = create_clean_outline_from_wall_lines(data)
+    wall_polygons = find_closed_polygons(data.get("walls", []))
+    if wall_polygons and clean_outline:
+        outer = max(wall_polygons, key=polygon_area)
+        clean_area = polygon_area(clean_outline)
+        outer_area = polygon_area([(x * 0.001, y * 0.001) for x, y in outer])
+        if clean_area > 0 and outer_area >= clean_area * 0.6:
+            return [(x * 0.001, y * 0.001) for x, y in outer]
+    return clean_outline
+
+
+def rect_from_bbox_meters(bbox):
+    x0, y0, x1, y1 = bbox
+    return [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+
+
+def buffered_polygon_bbox(poly, buffer):
+    x0, y0, x1, y1 = polygon_bbox(poly)
+    return (x0 - buffer, y0 - buffer, x1 + buffer, y1 + buffer)
+
+
+def structural_footprints_from_objects(data, objects, buffer=0.04, max_bbox_area=10.0):
+    footprints = []
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        footprint = object_footprint_xy(obj)
+        if not footprint:
+            continue
+        x0, y0, x1, y1 = buffered_polygon_bbox(footprint, buffer)
+        if x1 - x0 <= 0.01 or y1 - y0 <= 0.01:
+            continue
+        footprints.append(rect_from_bbox_meters((x0, y0, x1, y1)))
+
+    for key in ("columns", "shafts", "openings", "voids"):
+        for item in data.get(key, []):
+            bbox = item.get("bbox")
+            if not bbox:
+                continue
+            x0, y0, x1, y1 = [value * 0.001 for value in bbox]
+            x0, y0, x1, y1 = x0 - buffer, y0 - buffer, x1 + buffer, y1 + buffer
+            if x1 - x0 <= 0.01 or y1 - y0 <= 0.01:
+                continue
+            if key == "columns" and (x1 - x0) * (y1 - y0) > max_bbox_area:
+                print(f"柱footprint: 跳过疑似聚合bbox，面积{(x1 - x0) * (y1 - y0):.1f}㎡")
+                continue
+            footprints.append(rect_from_bbox_meters((x0, y0, x1, y1)))
+
+    return footprints
+
+
+def difference_footprints_from_outline(outline_polygon, structural_footprints, min_area_sqm=0.05):
+    if not outline_polygon:
+        return []
+
+    outline_bbox = polygon_bbox(outline_polygon)
+    xs = {round(outline_bbox[0], 6), round(outline_bbox[2], 6)}
+    ys = {round(outline_bbox[1], 6), round(outline_bbox[3], 6)}
+    for poly in structural_footprints:
+        for x, y in poly:
+            if outline_bbox[0] - 0.001 <= x <= outline_bbox[2] + 0.001:
+                xs.add(round(x, 6))
+            if outline_bbox[1] - 0.001 <= y <= outline_bbox[3] + 0.001:
+                ys.add(round(y, 6))
+    xs = sorted(xs)
+    ys = sorted(ys)
+    if len(xs) < 2 or len(ys) < 2:
+        return []
+
+    def is_blocked(cx, cy):
+        return any(
+            point_in_polygon((cx, cy), poly) or point_on_polygon_boundary((cx, cy), poly, tol=0.001)
+            for poly in structural_footprints
+        )
+
+    width = len(xs) - 1
+    height = len(ys) - 1
+    free = set()
+    for i in range(width):
+        for j in range(height):
+            cell_width = xs[i + 1] - xs[i]
+            cell_height = ys[j + 1] - ys[j]
+            if cell_width < 0.02 or cell_height < 0.02:
+                continue
+            cx = (xs[i] + xs[i + 1]) / 2
+            cy = (ys[j] + ys[j + 1]) / 2
+            if not point_in_polygon((cx, cy), outline_polygon):
+                continue
+            if is_blocked(cx, cy):
+                continue
+            free.add((i, j))
+
+    def component_boundary(component):
+        edges = {}
+
+        def add_edge(a, b):
+            opposite = (b, a)
+            if opposite in edges:
+                del edges[opposite]
+            else:
+                edges[(a, b)] = True
+
+        for i, j in component:
+            p0 = (xs[i], ys[j])
+            p1 = (xs[i + 1], ys[j])
+            p2 = (xs[i + 1], ys[j + 1])
+            p3 = (xs[i], ys[j + 1])
+            add_edge(p0, p1)
+            add_edge(p1, p2)
+            add_edge(p2, p3)
+            add_edge(p3, p0)
+
+        outgoing = defaultdict(list)
+        for a, b in edges:
+            outgoing[a].append(b)
+
+        loops = []
+        while outgoing:
+            start = min(outgoing)
+            current = start
+            loop = [current]
+            while True:
+                candidates = outgoing.get(current)
+                if not candidates:
+                    break
+                nxt = candidates.pop(0)
+                if not candidates:
+                    outgoing.pop(current, None)
+                current = nxt
+                loop.append(current)
+                if current == start:
+                    break
+            if len(loop) >= 4 and loop[0] == loop[-1]:
+                loops.append(loop)
+        return max(loops, key=polygon_area) if loops else None
+
+    regions = []
+    seen = set()
+    for cell in list(free):
+        if cell in seen:
+            continue
+        queue = deque([cell])
+        seen.add(cell)
+        component = []
+        while queue:
+            i, j = queue.popleft()
+            component.append((i, j))
+            for neighbor in ((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)):
+                if neighbor in free and neighbor not in seen:
+                    seen.add(neighbor)
+                    queue.append(neighbor)
+
+        area = sum((xs[i + 1] - xs[i]) * (ys[j + 1] - ys[j]) for i, j in component)
+        if area < min_area_sqm:
+            continue
+        boundary = component_boundary(component)
+        if boundary:
+            regions.append(boundary)
+
+    return sorted(regions, key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]))
+
+
+def create_structural_difference_ceiling_regions(data, outline_polygon, structural_objects, mat, collection, wall_height):
+    if not outline_polygon:
+        return []
+
+    beam_bottoms = []
+    for obj in structural_objects:
+        if obj.type != "MESH" or not obj.name.startswith("梁"):
+            continue
+        zs = [(obj.matrix_world @ vert.co).z for vert in obj.data.vertices]
+        if zs:
+            beam_bottoms.append(min(zs))
+    z_base = min(beam_bottoms) if beam_bottoms else wall_height - 0.4
+    block_height = max(wall_height - z_base, 0.2)
+
+    structural_footprints = structural_footprints_from_objects(data, structural_objects)
+    regions = difference_footprints_from_outline(outline_polygon, structural_footprints)
+
+    objects = []
+    for i, region in enumerate(regions):
+        obj = create_extruded_polygon_meters(
+            region,
+            block_height,
+            f"布尔吊顶块{i:03d}",
+            mat,
+            z_base=z_base,
+        )
+        if not obj:
+            continue
+        collection.objects.link(obj)
+        objects.append(obj)
+
+    print(
+        f"2D结构差集吊顶块: 外轮廓1个, 结构footprint{len(structural_footprints)}个, "
+        f"Z={z_base:.3f}..{z_base + block_height:.3f}, 生成{len(objects)}块"
+    )
+    return objects
+
+
 def create_boolean_ceiling_regions(outline_polygon, cutter_objects, mat, collection, wall_height):
     if not outline_polygon:
         return []
@@ -1858,14 +2059,15 @@ def main():
     print(f"梁: 建模{len(beam_objects)}块")
 
     if boolean_regions_only:
-        ceiling_cutters = [
+        structural_objects = [
             obj for obj in wall_objects
             if not obj.name.startswith("窗洞")
         ] + door_headers + beam_objects
-        clean_outline = create_clean_outline_from_wall_lines(data)
-        boolean_regions = create_boolean_ceiling_regions(
-            clean_outline,
-            ceiling_cutters,
+        outer_outline = create_outer_outline_from_wall_lines(data)
+        boolean_regions = create_structural_difference_ceiling_regions(
+            data,
+            outer_outline,
+            structural_objects,
             mat_boolean,
             collection,
             wall_height=avg_h * 0.001,
