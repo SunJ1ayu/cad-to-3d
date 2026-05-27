@@ -885,11 +885,49 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
         bboxes.append((x0, y0, x1, y1))
     if not bboxes:
         return []
+    expansion_bboxes = [
+        bbox
+        for bbox in bboxes
+        if min(bbox[2] - bbox[0], bbox[3] - bbox[1]) <= 0.8
+    ]
 
     xs = sorted({round(value, 6) for bbox in bboxes for value in (bbox[0], bbox[2])})
     ys = sorted({round(value, 6) for bbox in bboxes for value in (bbox[1], bbox[3])})
     if len(xs) < 2 or len(ys) < 2:
         return []
+
+    def overlap_1d(a0, a1, b0, b1, tol=1e-6):
+        return min(a1, b1) - max(a0, b0) > tol
+
+    def expand_boundary_coverage(boundary):
+        """空腔只覆盖净空；层高块要盖住分区，所以扩到相邻墙/梁外边。"""
+        x0, y0, x1, y1 = polygon_bbox(boundary)
+        x0 *= 0.001
+        y0 *= 0.001
+        x1 *= 0.001
+        y1 *= 0.001
+        tol = 0.002
+
+        orig_x0, orig_y0, orig_x1, orig_y1 = x0, y0, x1, y1
+        for bx0, by0, bx1, by1 in expansion_bboxes:
+            if overlap_1d(orig_y0, orig_y1, by0, by1):
+                if abs(bx1 - orig_x0) <= tol and bx0 < x0:
+                    x0 = bx0
+                if abs(bx0 - orig_x1) <= tol and bx1 > x1:
+                    x1 = bx1
+            if overlap_1d(orig_x0, orig_x1, bx0, bx1):
+                if abs(by1 - orig_y0) <= tol and by0 < y0:
+                    y0 = by0
+                if abs(by0 - orig_y1) <= tol and by1 > y1:
+                    y1 = by1
+
+        return [
+            (x0 * 1000, y0 * 1000),
+            (x1 * 1000, y0 * 1000),
+            (x1 * 1000, y1 * 1000),
+            (x0 * 1000, y1 * 1000),
+            (x0 * 1000, y0 * 1000),
+        ]
 
     def is_blocked(cx, cy):
         return any(
@@ -995,7 +1033,7 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
         boundary = component_boundary(component)
         if not boundary:
             continue
-        footprints.append([(x * 1000, y * 1000) for x, y in boundary])
+        footprints.append(expand_boundary_coverage([(x * 1000, y * 1000) for x, y in boundary]))
 
     return sorted(footprints, key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]))
 
