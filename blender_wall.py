@@ -895,6 +895,11 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
         for bbox in bboxes
         if min(bbox[2] - bbox[0], bbox[3] - bbox[1]) <= 0.8
     ]
+    coverage_strip_bboxes = [
+        bbox
+        for bbox in bboxes
+        if min(bbox[2] - bbox[0], bbox[3] - bbox[1]) <= 1.0
+    ]
 
     xs = sorted({round(value, 6) for bbox in bboxes for value in (bbox[0], bbox[2])})
     ys = sorted({round(value, 6) for bbox in bboxes for value in (bbox[1], bbox[3])})
@@ -983,6 +988,57 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
                 if changed:
                     break
         return merged
+
+    def bbox_overlap_area(a, b):
+        x_overlap = min(a[2], b[2]) - max(a[0], b[0])
+        y_overlap = min(a[3], b[3]) - max(a[1], b[1])
+        if x_overlap <= 0 or y_overlap <= 0:
+            return 0
+        return x_overlap * y_overlap
+
+    def bbox_overlap_size(a, b):
+        return (
+            max(min(a[2], b[2]) - max(a[0], b[0]), 0),
+            max(min(a[3], b[3]) - max(a[1], b[1]), 0),
+        )
+
+    def expand_to_adjacent_coverage_strips(items):
+        if not items:
+            return items
+        original_bboxes = [polygon_bbox(item) for item in items]
+        adjusted = []
+        for index, item in enumerate(items):
+            x0, y0, x1, y1 = polygon_bbox(item)
+            for bx0_m, by0_m, bx1_m, by1_m in coverage_strip_bboxes:
+                bx0, by0, bx1, by1 = bx0_m * 1000, by0_m * 1000, bx1_m * 1000, by1_m * 1000
+                proposals = []
+                if abs(bx1 - x0) <= 2 and overlap_1d(y0, y1, by0, by1, tol=1):
+                    proposals.append((min(x0, bx0), y0, x1, y1))
+                if abs(bx0 - x1) <= 2 and overlap_1d(y0, y1, by0, by1, tol=1):
+                    proposals.append((x0, y0, max(x1, bx1), y1))
+                if abs(by1 - y0) <= 2 and overlap_1d(x0, x1, bx0, bx1, tol=1):
+                    proposals.append((x0, min(y0, by0), x1, y1))
+                if abs(by0 - y1) <= 2 and overlap_1d(x0, x1, bx0, bx1, tol=1):
+                    proposals.append((x0, y0, x1, max(y1, by1)))
+
+                for proposal in proposals:
+                    old_bbox = (x0, y0, x1, y1)
+                    grows_into_other_coverage = False
+                    for other_index, other_bbox in enumerate(original_bboxes):
+                        if other_index == index:
+                            continue
+                        overlap_width, overlap_height = bbox_overlap_size(proposal, other_bbox)
+                        if (
+                            bbox_overlap_area(proposal, other_bbox) > bbox_overlap_area(old_bbox, other_bbox) + 10_000
+                            and overlap_width > 300
+                            and overlap_height > 300
+                        ):
+                            grows_into_other_coverage = True
+                            break
+                    if not grows_into_other_coverage:
+                        x0, y0, x1, y1 = proposal
+            adjusted.append(rect_from_bbox((x0, y0, x1, y1)))
+        return adjusted
 
     def is_blocked(cx, cy):
         return any(
@@ -1091,6 +1147,7 @@ def ceiling_footprints_from_model_objects(blocker_objects, min_area_sqm=3.0):
         footprints.append(expand_boundary_coverage([(x * 1000, y * 1000) for x, y in boundary]))
 
     footprints = merge_coverage_footprints(footprints)
+    footprints = expand_to_adjacent_coverage_strips(footprints)
     return sorted(footprints, key=lambda poly: (polygon_bbox(poly)[1], polygon_bbox(poly)[0]))
 
 
