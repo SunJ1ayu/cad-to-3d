@@ -653,46 +653,58 @@ def _wall_gap_candidates(walls: list, horizontal: bool) -> list:
         if horizontal:
             if abs(dy) > 5 or abs(dx) < 100:
                 continue
-            cross = round((sy + ey) / 2 / 10) * 10
+            cross_key = round((sy + ey) / 2 / 10) * 10
+            cross_real = (sy + ey) / 2
             start, end = sorted([sx, ex])
         else:
             if abs(dx) > 5 or abs(dy) < 100:
                 continue
-            cross = round((sx + ex) / 2 / 10) * 10
+            cross_key = round((sx + ex) / 2 / 10) * 10
+            cross_real = (sx + ex) / 2
             start, end = sorted([sy, ey])
-        segments.append((cross, start, end))
+        segments.append((cross_key, cross_real, start, end))
 
     by_cross = defaultdict(list)
-    for cross, start, end in segments:
-        by_cross[cross].append((start, end))
+    for cross_key, cross_real, start, end in segments:
+        by_cross[cross_key].append((cross_real, start, end))
 
     candidates = []
-    for cross, spans in by_cross.items():
-        spans = sorted(spans)
-        for (a0, a1), (b0, b1) in zip(spans, spans[1:]):
+    for cross_key, items in by_cross.items():
+        items.sort(key=lambda x: x[1])  # sort by start
+        for (cr, a0, a1), (_, b0, b1) in zip(items, items[1:]):
             gap = b0 - a1
             if not (500 <= gap <= 1600):
                 continue
-            # The opposing wall face should have a nearby parallel span.
-            depth = None
-            for other_cross, other_spans in by_cross.items():
-                cross_gap = abs(other_cross - cross)
-                if not (40 <= cross_gap <= 400):
+            # 找对侧墙：另一组中与缺口重叠的墙线
+            face_a = cr  # 本侧墙实际位置
+            face_b = None
+            for other_key, other_items in by_cross.items():
+                if other_key == cross_key:
                     continue
-                for c0, c1 in other_spans:
+                for cr_other, c0, c1 in other_items:
+                    cross_gap = abs(cr_other - face_a)
+                    if not (40 <= cross_gap <= 400):
+                        continue
                     if min(a1, b0) <= max(c0, c1) and max(a1, b0) >= min(c0, c1):
-                        depth = cross_gap if depth is None else min(depth, cross_gap)
-            if depth is None:
-                depth = 200
-            if horizontal:
-                bbox = [round(a1, 1), round(cross - depth / 2, 1), round(b0, 1), round(cross + depth / 2, 1)]
+                        if face_b is None or abs(cr_other - face_a) < abs(face_b - face_a):
+                            face_b = cr_other
+            if face_b is not None:
+                # bbox 从本侧墙面到对侧墙面
+                depth_face = min(face_a, face_b)
+                depth_far = max(face_a, face_b)
             else:
-                bbox = [round(cross - depth / 2, 1), round(a1, 1), round(cross + depth / 2, 1), round(b0, 1)]
+                # 无对侧墙，用默认 depth
+                depth_face = face_a - 100
+                depth_far = face_a + 100
+            if horizontal:
+                bbox = [round(a1, 1), round(depth_face, 1), round(b0, 1), round(depth_far, 1)]
+            else:
+                bbox = [round(depth_face, 1), round(a1, 1), round(depth_far, 1), round(b0, 1)]
             candidates.append({
                 "position": [round((bbox[0] + bbox[2]) / 2, 1), round((bbox[1] + bbox[3]) / 2, 1)],
                 "bbox": bbox,
                 "width": round(gap, 1),
-                "depth": round(depth, 1),
+                "depth": round(abs(depth_far - depth_face), 1),
             })
     return candidates
 
