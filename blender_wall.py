@@ -121,6 +121,72 @@ def point_on_polygon_boundary(point, poly, tol=10.0):
     return False
 
 
+def _ray_segment_intersection(ox, oy, dx, dy, sx, sy, ex, ey):
+    """射线 (ox,oy)+t*(dx,dy) 与线段 (sx,sy)-(ex,ey) 求交。
+    返回沿射线的 t 值 (>=0)，无交点返回 None。"""
+    seg_dx = ex - sx
+    seg_dy = ey - sy
+    denom = dx * seg_dy - dy * seg_dx
+    if abs(denom) < 1e-10:
+        return None
+    t = ((sx - ox) * seg_dy - (sy - oy) * seg_dx) / denom
+    u = ((sx - ox) * dy - (sy - oy) * dx) / denom
+    if t >= 0 and 0 <= u <= 1:
+        return t
+    return None
+
+
+def _extend_beam_endpoints_to_walls(beams, wall_lines, tol=300):
+    """梁线端点沿方向延长到 BS-柱 墙边界。
+
+    对每根梁线的两个端点，沿梁线方向射线求交最近墙线，
+    如果距离 < tol，延长端点到墙边。
+    """
+    if not wall_lines:
+        return
+    ext_count = 0
+
+    for beam in beams:
+        if not beam.get("start") or not beam.get("end"):
+            continue
+        sx, sy = beam["start"]
+        ex, ey = beam["end"]
+        length = math.hypot(ex - sx, ey - sy)
+        if length < 1:
+            continue
+        # 梁线方向
+        dir_x = (ex - sx) / length
+        dir_y = (ey - sy) / length
+
+        # 对两个端点分别处理
+        for endpoint_idx, (px, py, reverse) in enumerate([
+            (sx, sy, True),   # 起点：反向延长
+            (ex, ey, False),  # 终点：正向延长
+        ]):
+            rdx = -dir_x if reverse else dir_x
+            rdy = -dir_y if reverse else dir_y
+
+            best_t = None
+            for wl in wall_lines:
+                ws, we = wl["start"], wl["end"]
+                t = _ray_segment_intersection(px, py, rdx, rdy, ws[0], ws[1], we[0], we[1])
+                if t is not None and t <= tol and t > 1:  # >1 避免吸附到自身端点
+                    if best_t is None or t < best_t:
+                        best_t = t
+
+            if best_t is not None:
+                new_x = px + rdx * best_t
+                new_y = py + rdy * best_t
+                if reverse:
+                    beam["start"] = [round(new_x, 1), round(new_y, 1)]
+                else:
+                    beam["end"] = [round(new_x, 1), round(new_y, 1)]
+                ext_count += 1
+
+    if ext_count:
+        print(f"端点找墙补边: {ext_count}个端点延长到墙边")
+
+
 def line_midpoint(w):
     return ((w["start"][0] + w["end"][0]) / 2, (w["start"][1] + w["end"][1]) / 2)
 
@@ -2133,8 +2199,13 @@ def main():
     argv = sys.argv
     if "--" in argv:
         argv = argv[argv.index("--") + 1:]
+    no_ceiling = False
+    if "--no-ceiling" in argv:
+        no_ceiling = True
+        argv.remove("--no-ceiling")
+
     if not argv:
-        print("用法: blender --background --python blender_wall.py -- <input.json> [output.blend]")
+        print("用法: blender --background --python blender_wall.py -- <input.json> [output.blend] [--no-ceiling]")
         sys.exit(1)
 
     json_path = argv[0]
@@ -2165,6 +2236,9 @@ def main():
         ([w for w in data["walls"] if w.get("demolishable")], mat_model, "可拆墙", 100),
     ]:
         polys = find_closed_polygons(walls)
+        # 过滤面积过小的围合（柱内碎面/管线等）
+        min_area_mm2 = 500_000  # 0.5㎡
+        polys = [p for p in polys if polygon_area(p) >= min_area_mm2]
         covered_keys = set()
         for poly in polys:
             covered_keys.update(polygon_line_keys(poly))
@@ -2236,6 +2310,10 @@ def main():
     total += len(door_headers)
     print(f"门洞门头墙: 补{len(door_headers)}块")
 
+    # 梁线端点延长到 BS-柱 墙边界（端点找墙补边）
+    col_walls = [w for w in data.get("walls", []) if w.get("layer") == "BS-柱"]
+    _extend_beam_endpoints_to_walls(data.get("beams", []), col_walls, tol=300)
+
     beam_objects = create_beam_objects(
         data.get("beams", []),
         avg_h,
@@ -2246,7 +2324,9 @@ def main():
     total += len(beam_objects)
     print(f"梁: 建模{len(beam_objects)}块")
 
-    if boolean_regions_only:
+    if no_ceiling:
+        print("吊顶/层高块: 已跳过")
+    elif boolean_regions_only:
         structural_objects = wall_objects + door_headers + beam_objects
         boundary_objects = wall_objects + door_headers
         outer_outlines, outline_source = create_space_outlines_from_boundary_objects(
