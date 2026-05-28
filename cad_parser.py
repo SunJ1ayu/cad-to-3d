@@ -116,6 +116,16 @@ def parse_dxf(filepath: str) -> dict:
             })
     result["windows"].extend(_pair_lines_to_window_openings(window_lines))
 
+    window_polys = []
+    for e in msp.query("LWPOLYLINE"):
+        if e.dxf.layer == "BS-窗":
+            pts = [(round(float(p[0]), 1), round(float(p[1]), 1)) for p in e.get_points(format="xy")]
+            window_polys.append({
+                "points": pts,
+                "closed": bool(e.closed),
+            })
+    result["windows"].extend(_polylines_to_window_openings(window_polys))
+
     # ============================================================
     # 3. 门 (FF-门) - INSERT 块引用 或 直接画的 LWPOLYLINE/ARC
     # ============================================================
@@ -545,6 +555,87 @@ def _pair_lines_to_window_openings(lines: list) -> list:
             "points": pts,
         })
     return openings
+
+
+def _polylines_to_window_openings(polylines: list) -> list:
+    """Convert BS-窗 closed rectangular polylines into window openings.
+
+    Some CAD files draw each window as two concentric rectangles: a wall-depth
+    opening, often about 200mm deep, plus a thinner frame line, often about 40mm.
+    Group rectangles that share center and long-span so each physical window is
+    returned once.
+    """
+    rects = []
+    for poly in polylines:
+        pts = poly.get("points") or []
+        if not poly.get("closed") or len(pts) < 4:
+            continue
+
+        xs = [float(p[0]) for p in pts]
+        ys = [float(p[1]) for p in pts]
+        x0, x1 = min(xs), max(xs)
+        y0, y1 = min(ys), max(ys)
+        width = x1 - x0
+        height = y1 - y0
+        long_span = max(width, height)
+        short_span = min(width, height)
+
+        if long_span < 400 or short_span <= 0 or short_span > 600:
+            continue
+
+        rects.append({
+            "points": pts,
+            "bbox": [round(x0, 1), round(y0, 1), round(x1, 1), round(y1, 1)],
+            "position": [round((x0 + x1) / 2, 1), round((y0 + y1) / 2, 1)],
+            "opening_length": round(long_span, 1),
+            "frame_width": round(short_span, 1),
+            "rotation": 0 if width >= height else 90,
+        })
+
+    groups = []
+    for rect in rects:
+        matched = None
+        rx, ry = rect["position"]
+        for group in groups:
+            gx, gy = group[0]["position"]
+            if (
+                abs(rx - gx) <= 5
+                and abs(ry - gy) <= 5
+                and abs(rect["opening_length"] - group[0]["opening_length"]) <= 5
+                and rect["rotation"] == group[0]["rotation"]
+            ):
+                matched = group
+                break
+        if matched is None:
+            groups.append([rect])
+        else:
+            matched.append(rect)
+
+    windows = []
+    for group in groups:
+        opening = max(group, key=lambda r: r["frame_width"])
+        frame = min(group, key=lambda r: r["frame_width"])
+        win = {
+            "type": "window",
+            "layer": "BS-窗",
+            "representation": "polyline_rect",
+            "position": opening["position"],
+            "bbox": opening["bbox"],
+            "opening_length": opening["opening_length"],
+            "frame_width": opening["frame_width"],
+            "rotation": opening["rotation"],
+            "sill_height": None,
+            "window_height": None,
+            "annotations": [],
+            "points": opening["points"],
+            "source_rect_count": len(group),
+        }
+        if frame is not opening:
+            win["inner_frame_width"] = frame["frame_width"]
+            win["inner_bbox"] = frame["bbox"]
+        windows.append(win)
+
+    return windows
 
 
 def _associate_annotations(result: dict):
