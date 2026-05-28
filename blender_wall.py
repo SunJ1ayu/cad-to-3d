@@ -121,6 +121,46 @@ def point_on_polygon_boundary(point, poly, tol=10.0):
     return False
 
 
+def _find_connected_beam_group(beams, max_dist=2000):
+    """找端点相近的梁线连通组（BFS）。"""
+    if not beams:
+        return []
+    n = len(beams)
+    adj = [[] for _ in range(n)]
+    for i in range(n):
+        si, ei = beams[i]["start"], beams[i]["end"]
+        for j in range(i + 1, n):
+            sj, ej = beams[j]["start"], beams[j]["end"]
+            d = min(
+                math.hypot(si[0] - sj[0], si[1] - sj[1]),
+                math.hypot(si[0] - ej[0], si[1] - ej[1]),
+                math.hypot(ei[0] - sj[0], ei[1] - sj[1]),
+                math.hypot(ei[0] - ej[0], ei[1] - ej[1]),
+            )
+            if d < max_dist:
+                adj[i].append(j)
+                adj[j].append(i)
+    visited = set()
+    best_group = []
+    for start in range(n):
+        if start in visited:
+            continue
+        group = []
+        queue = [start]
+        while queue:
+            node = queue.pop()
+            if node in visited:
+                continue
+            visited.add(node)
+            group.append(node)
+            for nb in adj[node]:
+                if nb not in visited:
+                    queue.append(nb)
+        if len(group) > len(best_group):
+            best_group = group
+    return [beams[i] for i in best_group]
+
+
 def line_midpoint(w):
     return ((w["start"][0] + w["end"][0]) / 2, (w["start"][1] + w["end"][1]) / 2)
 
@@ -1923,7 +1963,7 @@ def create_door_header_boxes(doors, wall_height, mat, collection):
     return objects
 
 
-def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
+def create_beam_objects(beams, wall_height, mat, collection, wall_objects, wall_lines=None):
     objects = []
 
     line_beams = [
@@ -2086,6 +2126,71 @@ def create_beam_objects(beams, wall_height, mat, collection, wall_objects):
 
     if skipped_unpaired:
         print(f"梁线配对: 跳过{skipped_unpaired}条未配对梁线")
+
+    # ── 同高梁组 polygonize ──
+    # 按 beam_height 分组，对组内梁线 + 附近墙边界做 polygonize
+    if wall_lines:
+        all_line_beams = [
+            b for b in merge_collinear_beam_lines(beams)
+            if b.get("type") == "beam" and b.get("start") and b.get("end")
+        ]
+        # 按 beam_height 分组
+        height_groups = defaultdict(list)
+        for b in all_line_beams:
+            h = b.get("beam_height")
+            if h and h > 0:
+                height_groups[h].append(b)
+
+        for h_val, group_beams in height_groups.items():
+            if len(group_beams) < 2:
+                continue
+            # 收集组内梁线
+            group_lines = [{"start": b["start"], "end": b["end"], "layer": "BS-梁"}
+                           for b in group_beams]
+            # 找附近墙线段（梁端点 3000mm 内）
+            group_endpoints = []
+            for b in group_beams:
+                group_endpoints.append(b["start"])
+                group_endpoints.append(b["end"])
+            nearby_walls = []
+            for wl in wall_lines:
+                for ep in group_endpoints:
+                    d = math.hypot(wl["start"][0] - ep[0], wl["start"][1] - ep[1])
+                    if d < 3000:
+                        nearby_walls.append(wl)
+                        break
+            # polygonize
+            combined = group_lines + nearby_walls
+            polys = find_closed_polygons(combined)
+            if not polys:
+                continue
+            # 只保留面积 > 1㎡ 的围合
+            polys = [p for p in polys if polygon_area(p) > 1_000_000]
+            # 移除与其他围合重叠的小围合
+            polys.sort(key=lambda p: -polygon_area(p))
+            filtered = []
+            for poly in polys:
+                dominated = False
+                for big in filtered:
+                    if polygon_area(big) <= polygon_area(poly):
+                        continue
+                    bb = polygon_bbox(big)
+                    bp = polygon_bbox(poly)
+                    overlap_x = max(0, min(bb[2], bp[2]) - max(bb[0], bp[0]))
+                    overlap_y = max(0, min(bb[3], bp[3]) - max(bb[1], bp[1]))
+                    if overlap_x * overlap_y > polygon_area(poly) * 0.5:
+                        dominated = True
+                        break
+                if not dominated:
+                    filtered.append(poly)
+            for poly in filtered:
+                area = polygon_area(poly)
+                beam_depth = wall_height - h_val
+                if beam_depth <= 20:
+                    continue
+                obj = add_beam_object(f"低区_H{h_val}", poly, h_val, None)
+                if obj:
+                    print(f"低区H={h_val}: 面积={area/1e6:.1f}㎡, 梁厚{beam_depth:.0f}mm")
 
     for i, beam in enumerate(beams):
         if beam.get("type") != "beam" or not beam.get("polyline"):
@@ -2254,12 +2359,14 @@ def main():
     total += len(door_headers)
     print(f"门洞门头墙: 补{len(door_headers)}块")
 
+    col_walls = [w for w in data.get("walls", []) if w.get("layer") == "BS-柱"]
     beam_objects = create_beam_objects(
         data.get("beams", []),
         avg_h,
         mat_model,
         collection,
         wall_objects,
+        wall_lines=col_walls,
     )
     total += len(beam_objects)
     print(f"梁: 建模{len(beam_objects)}块")
