@@ -252,31 +252,60 @@ def parse_dxf(filepath: str) -> dict:
     # ============================================================
     # 5. 梁 (BS-梁)
     # ============================================================
+    beam_lines = []
+    beam_polylines = []
     for e in msp.query("LINE"):
         if e.dxf.layer == "BS-梁":
             s, end = e.dxf.start, e.dxf.end
-            length = math.sqrt((s.x - end.x)**2 + (s.y - end.y)**2)
-            result["beams"].append({
-                "type": "beam",
-                "layer": "BS-梁",
-                "start": [round(s.x, 1), round(s.y, 1)],
-                "end": [round(end.x, 1), round(end.y, 1)],
-                "length": round(length, 1),
-                "beam_height": None,
-                "beam_width": None,
-                "annotations": [],
-            })
+            beam_lines.append(((s.x, s.y), (end.x, end.y), "direct"))
     for e in msp.query("LWPOLYLINE"):
         if e.dxf.layer == "BS-梁":
-            pts = [(round(p[0], 1), round(p[1], 1)) for p in e.get_points(format="xy")]
-            result["beams"].append({
-                "type": "beam",
-                "layer": "BS-梁",
-                "polyline": pts,
-                "beam_height": None,
-                "beam_width": None,
-                "annotations": [],
-            })
+            pts = [(float(p[0]), float(p[1])) for p in e.get_points(format="xy")]
+            beam_polylines.append((pts, "direct"))
+
+    for e in msp.query("INSERT"):
+        if e.dxf.layer != "BS-梁":
+            continue
+        if e.dxf.name not in doc.blocks:
+            continue
+        for ent in doc.blocks[e.dxf.name]:
+            if ent.dxf.layer != "BS-梁":
+                continue
+            if ent.dxftype() == "LINE":
+                s = _transform_insert_point(ent.dxf.start.x, ent.dxf.start.y, e)
+                end = _transform_insert_point(ent.dxf.end.x, ent.dxf.end.y, e)
+                beam_lines.append((s, end, f"block:{e.dxf.name}"))
+            elif ent.dxftype() == "LWPOLYLINE":
+                pts = [
+                    _transform_insert_point(float(p[0]), float(p[1]), e)
+                    for p in ent.get_points(format="xy")
+                ]
+                beam_polylines.append((pts, f"block:{e.dxf.name}"))
+
+    for s, end, source in beam_lines:
+        length = math.sqrt((s[0] - end[0])**2 + (s[1] - end[1])**2)
+        result["beams"].append({
+            "type": "beam",
+            "layer": "BS-梁",
+            "source": source,
+            "start": [round(s[0], 1), round(s[1], 1)],
+            "end": [round(end[0], 1), round(end[1], 1)],
+            "length": round(length, 1),
+            "beam_height": None,
+            "beam_width": None,
+            "annotations": [],
+        })
+
+    for pts, source in beam_polylines:
+        result["beams"].append({
+            "type": "beam",
+            "layer": "BS-梁",
+            "source": source,
+            "polyline": [(round(p[0], 1), round(p[1], 1)) for p in pts],
+            "beam_height": None,
+            "beam_width": None,
+            "annotations": [],
+        })
 
     # ============================================================
     # 6. 半高隔断 (DS-半高隔断)
@@ -400,6 +429,18 @@ def _parse_window_block_name(name: str) -> dict:
             "frame_width": int(m.group(2)),
         }
     return {}
+
+
+def _transform_insert_point(x: float, y: float, insert) -> tuple[float, float]:
+    """Transform a block-local XY point into modelspace for simple INSERT cases."""
+    sx = getattr(insert.dxf, "xscale", 1) or 1
+    sy = getattr(insert.dxf, "yscale", 1) or 1
+    angle = math.radians(getattr(insert.dxf, "rotation", 0) or 0)
+    px = x * sx
+    py = y * sy
+    rx = px * math.cos(angle) - py * math.sin(angle)
+    ry = px * math.sin(angle) + py * math.cos(angle)
+    return insert.dxf.insert.x + rx, insert.dxf.insert.y + ry
 
 
 def _merge_lines_to_columns(lines: list) -> list:

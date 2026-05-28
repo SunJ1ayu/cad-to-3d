@@ -1,6 +1,6 @@
 {
   "meta": {
-    "source_file": "/root/新块.dxf",
+    "source_file": "input_new_20260528.dxf",
     "layers": [
       "0",
       "BS-墙",
@@ -2467,324 +2467,726 @@
   ],
   "beams": [
     {
-      "type": "beam_annotation",
-      "value": 2550,
-      "key": "beam_height",
-      "position": [
-        -59904.3,
-        118355.9
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -55183.3,
+        117423.6
       ],
-      "raw_text": "H=2550"
+      "end": [
+        -55183.3,
+        115108.6
+      ],
+      "length": 2315.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -59897.7,
-        118182.6
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -55383.3,
+        117423.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -55383.3,
+        115108.6
+      ],
+      "length": 2315.0,
+      "beam_height": 2550,
+      "beam_width": 200,
+      "annotations": [
+        "H=2550",
+        "W=200"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 2435,
-      "key": "beam_height",
-      "position": [
-        -58574.6,
-        117535.2
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -51978.3,
+        112318.6
       ],
-      "raw_text": "H=2435"
+      "end": [
+        -48768.3,
+        112318.6
+      ],
+      "length": 3210.0,
+      "beam_height": 2590,
+      "beam_width": 300,
+      "annotations": [
+        "H=2590",
+        "W=300"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -58568.1,
-        117361.9
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -51978.3,
+        112018.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -48768.3,
+        112018.6
+      ],
+      "length": 3210.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 2435,
-      "key": "beam_height",
-      "position": [
-        -59995.6,
-        119936.7
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -56193.3,
+        120328.6
       ],
-      "raw_text": "H=2435"
+      "end": [
+        -53493.3,
+        120328.6
+      ],
+      "length": 2700.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 300,
-      "key": "beam_width",
-      "position": [
-        -59989.0,
-        119763.4
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -53293.3,
+        120328.6
       ],
-      "raw_text": "W=300"
+      "end": [
+        -51993.3,
+        120328.6
+      ],
+      "length": 1300.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 2540,
-      "key": "beam_height",
-      "position": [
-        -54152.8,
-        119936.7
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -56193.3,
+        120028.6
       ],
-      "raw_text": "H=2540"
+      "end": [
+        -53493.3,
+        120028.6
+      ],
+      "length": 2700.0,
+      "beam_height": 2540,
+      "beam_width": 300,
+      "annotations": [
+        "H=2540",
+        "W=300"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 300,
-      "key": "beam_width",
-      "position": [
-        -54146.2,
-        119763.4
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -53293.3,
+        120028.6
       ],
-      "raw_text": "W=300"
+      "end": [
+        -51993.3,
+        120028.6
+      ],
+      "length": 1300.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 2435,
-      "key": "beam_height",
-      "position": [
-        -53673.3,
-        117344.6
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -53293.3,
+        120738.6
       ],
-      "raw_text": "H=2435"
+      "end": [
+        -53293.3,
+        120328.6
+      ],
+      "length": 410.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -53666.7,
-        117171.3
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -53293.3,
+        120028.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -53293.3,
+        117623.6
+      ],
+      "length": 2405.0,
+      "beam_height": 2540,
+      "beam_width": 300,
+      "annotations": [
+        "H=2540",
+        "W=300"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 2550,
-      "key": "beam_height",
-      "position": [
-        -52515.0,
-        118355.9
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -53493.3,
+        120738.6
       ],
-      "raw_text": "H=2550"
+      "end": [
+        -53493.3,
+        120328.6
+      ],
+      "length": 410.0,
+      "beam_height": 2540,
+      "beam_width": 300,
+      "annotations": [
+        "H=2540",
+        "W=300"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -52508.5,
-        118182.6
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -53493.3,
+        120028.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -53493.3,
+        117623.6
+      ],
+      "length": 2405.0,
+      "beam_height": 2540,
+      "beam_width": 300,
+      "annotations": [
+        "H=2540",
+        "W=300"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 2550,
-      "key": "beam_height",
-      "position": [
-        -56108.7,
-        116314.1
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -48768.3,
+        117423.6
       ],
-      "raw_text": "H=2550"
+      "end": [
+        -48768.3,
+        115923.6
+      ],
+      "length": 1500.0,
+      "beam_height": 2465,
+      "beam_width": 100,
+      "annotations": [
+        "H=2465",
+        "W=200",
+        "H=2465",
+        "W=100"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -56102.2,
-        116140.8
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -48568.3,
+        117423.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -48568.3,
+        115923.6
+      ],
+      "length": 1500.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 2435,
-      "key": "beam_height",
-      "position": [
-        -53098.6,
-        116269.3
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -60798.3,
+        117623.6
       ],
-      "raw_text": "H=2435"
+      "end": [
+        -56393.3,
+        117623.6
+      ],
+      "length": 4405.0,
+      "beam_height": 2435,
+      "beam_width": 200,
+      "annotations": [
+        "H=2435",
+        "W=200"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -53092.0,
-        116096.0
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -60798.3,
+        117823.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -56393.3,
+        117823.6
+      ],
+      "length": 4405.0,
+      "beam_height": 2550,
+      "beam_width": 200,
+      "annotations": [
+        "H=2550",
+        "W=200"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 2590,
-      "key": "beam_height",
-      "position": [
-        -50376.8,
-        115087.3
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -60798.3,
+        120328.6
       ],
-      "raw_text": "H=2590"
+      "end": [
+        -59188.3,
+        120328.6
+      ],
+      "length": 1610.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -50370.2,
-        114914.0
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -60798.3,
+        120028.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -56593.3,
+        120028.6
+      ],
+      "length": 4205.0,
+      "beam_height": 2435,
+      "beam_width": 300,
+      "annotations": [
+        "H=2435",
+        "W=300",
+        "H=2435",
+        "W=300"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 2465,
-      "key": "beam_height",
-      "position": [
-        -49500.3,
-        116812.8
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -59188.3,
+        120738.6
       ],
-      "raw_text": "H=2465"
+      "end": [
+        -59188.3,
+        120328.6
+      ],
+      "length": 410.0,
+      "beam_height": 2435,
+      "beam_width": null,
+      "annotations": [
+        "H=2435"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -49493.7,
-        116639.4
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -55183.3,
+        117623.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -50588.3,
+        117623.6
+      ],
+      "length": 4595.0,
+      "beam_height": 2550,
+      "beam_width": 200,
+      "annotations": [
+        "H=2550",
+        "W=200"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 2465,
-      "key": "beam_height",
-      "position": [
-        -48932.5,
-        117257.9
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -55183.3,
+        117423.6
       ],
-      "raw_text": "H=2465"
+      "end": [
+        -52378.3,
+        117423.6
+      ],
+      "length": 2805.0,
+      "beam_height": 2435,
+      "beam_width": 200,
+      "annotations": [
+        "H=2435",
+        "W=200"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 100,
-      "key": "beam_width",
-      "position": [
-        -48925.9,
-        117084.6
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -52178.3,
+        117423.6
       ],
-      "raw_text": "W=100"
+      "end": [
+        -50588.3,
+        117423.6
+      ],
+      "length": 1590.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 2435,
-      "key": "beam_height",
-      "position": [
-        -54227.0,
-        111322.5
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -52378.3,
+        117423.6
       ],
-      "raw_text": "H=2435"
+      "end": [
+        -52378.3,
+        112318.6
+      ],
+      "length": 5105.0,
+      "beam_height": 2435,
+      "beam_width": 200,
+      "annotations": [
+        "W=200",
+        "H=2435",
+        "W=200"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -54220.4,
-        111149.2
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -52178.3,
+        117423.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -52178.3,
+        112318.6
+      ],
+      "length": 5105.0,
+      "beam_height": null,
+      "beam_width": 200,
+      "annotations": [
+        "W=200"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 2435,
-      "key": "beam_height",
-      "position": [
-        -57095.6,
-        111322.5
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -52178.3,
+        115363.6
       ],
-      "raw_text": "H=2435"
+      "end": [
+        -48768.3,
+        115363.6
+      ],
+      "length": 3410.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -57089.1,
-        111149.2
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -52178.3,
+        115163.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -48768.3,
+        115163.6
+      ],
+      "length": 3410.0,
+      "beam_height": 2590,
+      "beam_width": 200,
+      "annotations": [
+        "H=2590",
+        "W=200"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 2435,
-      "key": "beam_height",
-      "position": [
-        -56100.9,
-        111322.5
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -51793.3,
+        118633.6
       ],
-      "raw_text": "H=2435"
+      "end": [
+        -51793.3,
+        117623.6
+      ],
+      "length": 1010.0,
+      "beam_height": 2550,
+      "beam_width": 200,
+      "annotations": [
+        "H=2550",
+        "W=200"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 200,
-      "key": "beam_width",
-      "position": [
-        -56094.4,
-        111149.2
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -51593.3,
+        118633.6
       ],
-      "raw_text": "W=200"
+      "end": [
+        -51593.3,
+        117623.6
+      ],
+      "length": 1010.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 2435,
-      "key": "beam_height",
-      "position": [
-        -57779.0,
-        119936.7
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -55183.3,
+        111408.6
       ],
-      "raw_text": "H=2435"
+      "end": [
+        -55183.3,
+        110128.6
+      ],
+      "length": 1280.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 300,
-      "key": "beam_width",
-      "position": [
-        -57772.4,
-        119763.4
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -55383.3,
+        111408.6
       ],
-      "raw_text": "W=300"
+      "end": [
+        -55383.3,
+        110128.6
+      ],
+      "length": 1280.0,
+      "beam_height": 2435,
+      "beam_width": 200,
+      "annotations": [
+        "H=2435",
+        "W=200"
+      ]
     },
     {
-      "type": "beam_annotation",
-      "value": 2590,
-      "key": "beam_height",
-      "position": [
-        -51272.2,
-        112654.3
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -55183.3,
+        111608.6
       ],
-      "raw_text": "H=2590"
+      "end": [
+        -52378.3,
+        111608.6
+      ],
+      "length": 2805.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
     },
     {
-      "type": "beam_annotation",
-      "value": 300,
-      "key": "beam_width",
-      "position": [
-        -51265.6,
-        112481.0
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -55183.3,
+        111408.6
       ],
-      "raw_text": "W=300"
+      "end": [
+        -52378.3,
+        111408.6
+      ],
+      "length": 2805.0,
+      "beam_height": 2435,
+      "beam_width": 200,
+      "annotations": [
+        "H=2435",
+        "W=200"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -48158.3,
+        117423.6
+      ],
+      "end": [
+        -48158.3,
+        115363.6
+      ],
+      "length": 2060.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -59188.3,
+        120028.6
+      ],
+      "end": [
+        -59188.3,
+        117823.6
+      ],
+      "length": 2205.0,
+      "beam_height": 2550,
+      "beam_width": 200,
+      "annotations": [
+        "H=2550",
+        "W=200"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -58988.3,
+        120028.6
+      ],
+      "end": [
+        -58988.3,
+        117823.6
+      ],
+      "length": 2205.0,
+      "beam_height": 2435,
+      "beam_width": 200,
+      "annotations": [
+        "H=2435",
+        "W=200"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "start": [
+        -56193.3,
+        120328.6
+      ],
+      "end": [
+        -56193.3,
+        120738.6
+      ],
+      "length": 410.0,
+      "beam_height": null,
+      "beam_width": null,
+      "annotations": []
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "polyline": [
+        [
+          -58768.3,
+          111608.6
+        ],
+        [
+          -56033.3,
+          111608.6
+        ]
+      ],
+      "beam_height": 2435,
+      "beam_width": 200,
+      "annotations": [
+        "H=2435",
+        "W=200"
+      ]
+    },
+    {
+      "type": "beam",
+      "layer": "BS-梁",
+      "source": "block:dop_0216144898",
+      "polyline": [
+        [
+          -56033.3,
+          111408.6
+        ],
+        [
+          -58768.3,
+          111408.6
+        ]
+      ],
+      "beam_height": 2435,
+      "beam_width": 200,
+      "annotations": [
+        "H=2435",
+        "W=200",
+        "H=2435",
+        "W=200"
+      ]
     }
   ],
   "partitions": [],
