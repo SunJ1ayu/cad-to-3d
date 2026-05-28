@@ -13,25 +13,62 @@ The main open risk is generalization: the current implementation is proven on on
 
 ## Latest Progress
 
-As of 2026-05-27:
+As of 2026-05-28:
 
-- Replaced window boolean cutting with direct lower/upper wall generation.
-- Window wall depth is inferred from the two end wall lines instead of using the CAD block `frame_width` as the primary depth.
-- Removed unused Blender boolean ceiling code and other confirmed dead helpers.
-- Simplified ceiling marker collection by removing the unused `ceiling_at` resolver.
-- Regenerated `output_boolean_regions.blend` and exported `output_boolean_regions.fbx` from the current script.
-- Pushed the latest model export to GitHub:
-  - `output_boolean_regions.fbx`: https://github.com/SunJ1ayu/cad-to-3d/raw/master/output_boolean_regions.fbx
+### Beam 标注传播（已完成）
 
-Current verified generation summary:
+- 新增 `_propagate_beam_annotations()` 函数，在标注关联后做两步传播：
+  1. **链式传播**：端点相连（<50mm）的梁组成链，链内 beam_height/beam_width 互相传播
+  2. **平行推断**：链内仍缺失时，找平行且距离 200-600mm 的已标注梁继承
+- 效果：beam_height 覆盖率 56% → 100%，beam_width 56% → 94%，Blender 梁建模 9 → 18 块
+
+### 2点 Polyline 修复（已完成）
+
+- 2点 LWPOLYLINE（多段线）现在在 parser 阶段转为 LINE 处理，不再被 blender 跳过
+- 效果：+1 根梁（18 → 19 块）
+
+### BS-柱 围合过滤（待做）
+
+- BS-柱 围合内部的管线等非结构构件应该被忽略
+- 当前问题：围合005/007 是 BS-柱 短线围出的小三角，不应算独立墙体区域
+
+### 端点找墙补边 — 异形低区梁识别（下一步重点）
+
+**问题**：梁线被墙体遮挡后不再闭合，但语义上仍是完整低区。当前逻辑要求梁线自身闭合才能建模，导致异形低区梁被拆断。
+
+**核心思路**：墙体本身就是梁区边界的一部分。梁线不闭合没关系，只要它能和 BS-柱 墙体边界共同闭合，就可以生成低区。
+
+**第一步实现方案**（增量改动，不重构）：
+
+1. 梁线端点延长到墙边：端点离 BS-柱 墙体边界 < 300mm 时，延长至墙边
+2. 借用墙边闭合：梁线 + 墙边界共同围合 → 生成低区 polygon
+3. 同高合并：多个低区 polygon 如果 H 标注相同且边界相连/相邻 → 合并为一个低区
+4. 容差设置：
+   - `snap_tolerance` = 5~20mm（端点吸墙）
+   - `extend_tolerance` = 50~300mm（梁线延长找墙）
+   - `gap_close_tolerance` = 10~50mm（小缝闭合）
+
+**后续方向**（等更多 CAD 文件验证后再做）：
+
+- 统一 planar graph polygonize：所有墙边 + 梁线 + 外轮廓一起 polygonize，不再单独处理梁
+- 三层识别：几何层（线和面）→ 语义层（H/W/CH 标注赋值）→ 修正层（补边、合并碎面）
+
+**设计原则**：
+
+- 宁可多一两根独立梁（用户手动合并快），也不要脚本猜错把不同高的梁混在一起
+- 闭合多边形 = 同高，直接合并（零歧义）
+- 不闭合 + 能借墙闭合 + 同高标注 → 补边后合并
+- 不闭合 + 无法借墙 → 保持独立
+
+Current verified generation summary (v6):
 
 ```text
-walls: 82 parsed, 17 wall regions built
-windows: 6 parsed, 6 wall-thickness matches, 11 lower/upper wall boxes built
-doors: 5 parsed, 2 headers built, 3 skipped
-beams: 18 parsed, 9 built
-ceilings: 7 markers, 10 regions built
-total Blender objects: 49
+walls: 133 parsed, 27 wall regions built
+windows: 9 parsed, 9 wall-thickness matches, 18 lower/upper wall boxes built
+doors: 1 parsed, 1 header built
+beams: 38 parsed, 19 built
+ceilings: 12 markers, 13 regions built
+total Blender objects: 78
 ```
 
 ## Recommended Sequence
