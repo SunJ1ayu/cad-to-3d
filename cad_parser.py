@@ -174,65 +174,8 @@ def parse_dxf(filepath: str) -> dict:
                         "length": round(length, 1),
                     })
 
-    # 门框 LWPOLYLINE (FF-门)
-    door_polys = []
-    for e in msp.query("LWPOLYLINE"):
-        if e.dxf.layer == "FF-门":
-            pts = [(round(p[0], 1), round(p[1], 1)) for p in e.get_points(format="xy")]
-            xs = [p[0] for p in pts]
-            ys = [p[1] for p in pts]
-            cx = round(sum(xs) / len(xs), 1)
-            cy = round(sum(ys) / len(ys), 1)
-            w = round(max(xs) - min(xs), 1)
-            h = round(max(ys) - min(ys), 1)
-            door_polys.append({
-                "type": "door",
-                "layer": "FF-门",
-                "representation": "polyline",
-                "position": [cx, cy],
-                "bbox": [min(xs), min(ys), max(xs), max(ys)],
-                "width": max(w, h),
-                "depth": min(w, h),
-                "points": pts,
-                "door_height": None,
-                "door_width": None,
-                "annotations": [],
-            })
-    result["doors"].extend(door_polys)
-
-    # BS-备用 中有门洞辅助线/矩形，MH 标注通常指向这些门洞而不是 FF-门小构件
-    reserve_polys = []
-    for e in msp.query("LWPOLYLINE"):
-        if e.dxf.layer == "BS-备用":
-            pts = [(round(p[0], 1), round(p[1], 1)) for p in e.get_points(format="xy")]
-            if len(pts) < 4:
-                continue
-            xs = [p[0] for p in pts]
-            ys = [p[1] for p in pts]
-            reserve_polys.append({
-                "type": "door",
-                "layer": "BS-备用",
-                "representation": "opening_polyline",
-                "position": [round(sum(xs) / len(xs), 1), round(sum(ys) / len(ys), 1)],
-                "bbox": [min(xs), min(ys), max(xs), max(ys)],
-                "width": round(max(max(xs) - min(xs), max(ys) - min(ys)), 1),
-                "depth": round(min(max(xs) - min(xs), max(ys) - min(ys)), 1),
-                "points": pts,
-                "door_height": None,
-                "door_width": None,
-                "annotations": [],
-            })
-
-    reserve_lines = []
-    for e in msp.query("LINE"):
-        if e.dxf.layer == "BS-备用":
-            s, end = e.dxf.start, e.dxf.end
-            reserve_lines.append({
-                "start": (round(s.x, 1), round(s.y, 1)),
-                "end": (round(end.x, 1), round(end.y, 1)),
-            })
-    reserve_polys.extend(_pair_lines_to_door_openings(reserve_lines))
-    result["doors"].extend(reserve_polys)
+    # FF-门 和 BS-备用 都不直接作为门洞来源。
+    # 门洞只由 MH 标注 + 墙体缺口推断（见 _infer_doors_from_mh_annotations）。
 
     # ============================================================
     # 4. 柱子/承重墙 (BS-柱) - 不可拆墙体，LINE 实体
@@ -415,7 +358,9 @@ def parse_dxf(filepath: str) -> dict:
     # ============================================================
     # 9. 将标注关联到窗户（按最近距离）
     # ============================================================
+    _infer_doors_from_mh_annotations(result)
     _associate_annotations(result)
+    _propagate_beam_annotations(result)
 
     return result
 
@@ -544,6 +489,212 @@ def _pair_lines_to_door_openings(lines: list) -> list:
             "annotations": [],
         })
     return openings
+
+
+def _arc_swing_to_door_openings(arcs: list, small_rects: list) -> list:
+    openings = []
+    for arc in arcs:
+        cx, cy = arc["center"]
+        radius = arc["radius"]
+        endpoints = []
+        for angle in (arc["start_angle"], arc["end_angle"]):
+            rad = math.radians(angle)
+            endpoints.append((cx + math.cos(rad) * radius, cy + math.sin(rad) * radius))
+
+        best_endpoint = None
+        best_score = None
+        for ex, ey in endpoints:
+            score = 0
+            for rect in small_rects:
+                rx, ry = rect["position"]
+                if math.hypot(rx - cx, ry - cy) <= 160:
+                    score += 1
+                if math.hypot(rx - ex, ry - ey) <= 160:
+                    score += 1
+            score_tuple = (score, abs(ey - cy), abs(ex - cx))
+            if best_score is None or score_tuple > best_score:
+                best_score = score_tuple
+                best_endpoint = (ex, ey)
+
+        if best_endpoint is None:
+            continue
+
+        ex, ey = best_endpoint
+        horizontal = abs(ex - cx) >= abs(ey - cy)
+        matching_rects = [
+            rect for rect in small_rects
+            if (
+                math.hypot(rect["position"][0] - cx, rect["position"][1] - cy) <= 180
+                or math.hypot(rect["position"][0] - ex, rect["position"][1] - ey) <= 180
+            )
+        ]
+
+        if horizontal:
+            y_values = []
+            for rect in matching_rects:
+                y_values.extend([rect["bbox"][1], rect["bbox"][3]])
+            depth = max(y_values) - min(y_values) if y_values else 60
+            y0 = min(y_values) if y_values else cy - depth / 2
+            y1 = max(y_values) if y_values else cy + depth / 2
+            x0, x1 = sorted([cx, ex])
+        else:
+            x_values = []
+            for rect in matching_rects:
+                x_values.extend([rect["bbox"][0], rect["bbox"][2]])
+            depth = max(x_values) - min(x_values) if x_values else 60
+            x0 = min(x_values) if x_values else cx - depth / 2
+            x1 = max(x_values) if x_values else cx + depth / 2
+            y0, y1 = sorted([cy, ey])
+
+        width = round(max(x1 - x0, y1 - y0), 1)
+        depth = round(min(x1 - x0, y1 - y0), 1)
+        openings.append({
+            "type": "door",
+            "layer": "FF-门",
+            "representation": "arc_opening",
+            "position": [round((x0 + x1) / 2, 1), round((y0 + y1) / 2, 1)],
+            "bbox": [round(x0, 1), round(y0, 1), round(x1, 1), round(y1, 1)],
+            "width": width,
+            "depth": depth,
+            "door_height": None,
+            "door_width": None,
+            "annotations": [],
+            "arc": {
+                "center": [round(cx, 1), round(cy, 1)],
+                "radius": round(radius, 1),
+                "start_angle": round(arc["start_angle"], 1),
+                "end_angle": round(arc["end_angle"], 1),
+            },
+        })
+    return openings
+
+
+def _infer_doors_from_mh_annotations(result: dict):
+    """Infer door openings from MH door-height annotations and nearby wall gaps.
+
+    For each MH annotation, find the nearest wall gap. If an existing door
+    already overlaps that gap, just update its door_height. Otherwise create
+    a new door entry.
+    """
+    mh_annotations = [
+        ann for ann in result["annotations"]
+        if ann.get("parsed", {}).get("door_height")
+    ]
+    if not mh_annotations:
+        return
+
+    for ann in mh_annotations:
+        opening = _find_wall_gap_near_point(result["walls"], ann["position"])
+        if not opening:
+            continue
+
+        door_height = ann["parsed"]["door_height"][0]
+        raw_text = ann["raw_texts"][0]
+
+        # Check if an existing door already covers this gap
+        merged = False
+        for door in result["doors"]:
+            if not door.get("bbox"):
+                continue
+            if _bboxes_overlap(door["bbox"], opening["bbox"], margin=200):
+                door["door_height"] = door_height
+                if raw_text not in door.get("annotations", []):
+                    door.setdefault("annotations", []).append(raw_text)
+                merged = True
+                break
+
+        if not merged:
+            opening["type"] = "door"
+            opening["layer"] = "MH"
+            opening["representation"] = "mh_wall_gap"
+            opening["door_height"] = door_height
+            opening["door_width"] = opening["width"]
+            opening["annotations"] = [raw_text]
+            result["doors"].append(opening)
+
+
+def _bboxes_overlap(a: list, b: list, margin: float = 0) -> bool:
+    """Check if two bboxes [x0,y0,x1,y1] overlap (with optional margin)."""
+    return not (
+        a[2] + margin < b[0] - margin
+        or b[2] + margin < a[0] - margin
+        or a[3] + margin < b[1] - margin
+        or b[3] + margin < a[1] - margin
+    )
+
+
+def _find_wall_gap_near_point(walls: list, point: list) -> dict | None:
+    ax, ay = point
+    best = None
+    for horizontal in (True, False):
+        openings = _wall_gap_candidates(walls, horizontal)
+        for opening in openings:
+            x0, y0, x1, y1 = opening["bbox"]
+            cx, cy = opening["position"]
+            dx = max(x0 - ax, 0, ax - x1)
+            dy = max(y0 - ay, 0, ay - y1)
+            outside = math.hypot(dx, dy)
+            center_dist = math.hypot(cx - ax, cy - ay)
+            if outside > 2500 and center_dist > 2500:
+                continue
+            score = (outside, center_dist, -opening["width"])
+            if best is None or score < best[0]:
+                best = (score, opening)
+    return best[1] if best else None
+
+
+def _wall_gap_candidates(walls: list, horizontal: bool) -> list:
+    segments = []
+    for wall in walls:
+        sx, sy = wall["start"]
+        ex, ey = wall["end"]
+        dx = ex - sx
+        dy = ey - sy
+        if horizontal:
+            if abs(dy) > 5 or abs(dx) < 100:
+                continue
+            cross = round((sy + ey) / 2 / 10) * 10
+            start, end = sorted([sx, ex])
+        else:
+            if abs(dx) > 5 or abs(dy) < 100:
+                continue
+            cross = round((sx + ex) / 2 / 10) * 10
+            start, end = sorted([sy, ey])
+        segments.append((cross, start, end))
+
+    by_cross = defaultdict(list)
+    for cross, start, end in segments:
+        by_cross[cross].append((start, end))
+
+    candidates = []
+    for cross, spans in by_cross.items():
+        spans = sorted(spans)
+        for (a0, a1), (b0, b1) in zip(spans, spans[1:]):
+            gap = b0 - a1
+            if not (500 <= gap <= 1600):
+                continue
+            # The opposing wall face should have a nearby parallel span.
+            depth = None
+            for other_cross, other_spans in by_cross.items():
+                cross_gap = abs(other_cross - cross)
+                if not (40 <= cross_gap <= 400):
+                    continue
+                for c0, c1 in other_spans:
+                    if min(a1, b0) <= max(c0, c1) and max(a1, b0) >= min(c0, c1):
+                        depth = cross_gap if depth is None else min(depth, cross_gap)
+            if depth is None:
+                depth = 200
+            if horizontal:
+                bbox = [round(a1, 1), round(cross - depth / 2, 1), round(b0, 1), round(cross + depth / 2, 1)]
+            else:
+                bbox = [round(cross - depth / 2, 1), round(a1, 1), round(cross + depth / 2, 1), round(b0, 1)]
+            candidates.append({
+                "position": [round((bbox[0] + bbox[2]) / 2, 1), round((bbox[1] + bbox[3]) / 2, 1)],
+                "bbox": bbox,
+                "width": round(gap, 1),
+                "depth": round(depth, 1),
+            })
+    return candidates
 
 
 def _pair_lines_to_window_openings(lines: list) -> list:
@@ -802,7 +953,150 @@ def _associate_annotations(result: dict):
                 best_door = door
         if best_door and best_dist < 1500:
             best_door["door_height"] = parsed["door_height"][0]
-            best_door["annotations"].append(ann["raw_texts"][0])
+            raw = ann["raw_texts"][0]
+            if raw not in best_door.get("annotations", []):
+                best_door["annotations"].append(raw)
+
+
+def _propagate_beam_annotations(result: dict):
+    """通过链式连接和平行配对，将已有的 beam_height/beam_width 传播给缺失的梁线。
+
+    规则:
+    1. 端点相连（<50mm）的梁组成链，链内传播 h/w
+    2. 链仍缺失时，找平行且距离 200-600mm 的已标注梁，继承其 h/w
+    """
+    TOL_CONNECT = 50      # 端点相连判定 (mm)
+    TOL_PARALLEL_MIN = 50  # 平行梁最小间距 (mm) — 排除重叠线
+    TOL_PARALLEL_MAX = 600 # 平行梁最大间距 (mm)
+
+    beams = [b for b in result["beams"]
+             if b.get("type") == "beam" and b.get("start") and b.get("end")]
+    if not beams:
+        return
+
+    def _close(p1, p2):
+        return math.hypot(p1[0] - p2[0], p1[1] - p2[1]) < TOL_CONNECT
+
+    # --- 1. 构建连接链 ---
+    n = len(beams)
+    adj = [set() for _ in range(n)]
+    for i in range(n):
+        si, ei = beams[i]["start"], beams[i]["end"]
+        for j in range(i + 1, n):
+            sj, ej = beams[j]["start"], beams[j]["end"]
+            if _close(si, sj) or _close(si, ej) or _close(ei, sj) or _close(ei, ej):
+                adj[i].add(j)
+                adj[j].add(i)
+
+    visited = set()
+    chains = []
+    for i in range(n):
+        if i in visited:
+            continue
+        chain = []
+        queue = [i]
+        while queue:
+            node = queue.pop()
+            if node in visited:
+                continue
+            visited.add(node)
+            chain.append(node)
+            for nb in adj[node]:
+                if nb not in visited:
+                    queue.append(nb)
+        chains.append(chain)
+
+    # --- 2. 链内传播 ---
+    def _beam_dir(beam):
+        x1, y1 = beam["start"]
+        x2, y2 = beam["end"]
+        length = math.hypot(x2 - x1, y2 - y1)
+        if length == 0:
+            return None
+        return ((x2 - x1) / length, (y2 - y1) / length)
+
+    def _distance_point_to_segment(px, py, beam):
+        x1, y1 = beam["start"]
+        x2, y2 = beam["end"]
+        dx, dy = x2 - x1, y2 - y1
+        length_sq = dx * dx + dy * dy
+        if length_sq == 0:
+            return math.hypot(px - x1, py - y1)
+        t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / length_sq))
+        return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
+    def _min_distance_between(a, b):
+        d1 = _distance_point_to_segment(a["start"][0], a["start"][1], b)
+        d2 = _distance_point_to_segment(a["end"][0], a["end"][1], b)
+        d3 = _distance_point_to_segment(b["start"][0], b["start"][1], a)
+        d4 = _distance_point_to_segment(b["end"][0], b["end"][1], a)
+        return min(d1, d2, d3, d4)
+
+    changed = True
+    while changed:
+        changed = False
+        for chain in chains:
+            # 收集链内已有标注
+            h_vals = [beams[i]["beam_height"] for i in chain
+                      if beams[i].get("beam_height") is not None and beams[i]["beam_height"] > 0]
+            w_vals = [beams[i]["beam_width"] for i in chain
+                      if beams[i].get("beam_width") is not None and beams[i]["beam_width"] > 0]
+            if not h_vals and not w_vals:
+                continue
+            h_val = min(h_vals) if h_vals else None
+            w_val = max(w_vals) if w_vals else None
+            for i in chain:
+                b = beams[i]
+                if h_val and (b.get("beam_height") is None or b["beam_height"] <= 0):
+                    b["beam_height"] = h_val
+                    b.setdefault("annotations", []).append(f"链式传播H={h_val}")
+                    changed = True
+                if w_val and (b.get("beam_width") is None or b["beam_width"] <= 0):
+                    b["beam_width"] = w_val
+                    b.setdefault("annotations", []).append(f"链式传播W={w_val}")
+                    changed = True
+
+    # --- 3. 平行相邻推断（仅对链内仍缺失的梁） ---
+    for chain in chains:
+        missing = [i for i in chain
+                   if beams[i].get("beam_height") is None or beams[i]["beam_height"] <= 0]
+        if not missing:
+            continue
+
+        for mi in missing:
+            mb = beams[mi]
+            m_dir = _beam_dir(mb)
+            if m_dir is None:
+                continue
+
+            best_h, best_w = None, None
+            best_dist = float("inf")
+            for j, other in enumerate(beams):
+                if j in chain:
+                    continue
+                if other.get("beam_height") is None or other["beam_height"] <= 0:
+                    continue
+                o_dir = _beam_dir(other)
+                if o_dir is None:
+                    continue
+                # 平行判定: 方向向量点积接近 ±1
+                dot = abs(m_dir[0] * o_dir[0] + m_dir[1] * o_dir[1])
+                if dot < 0.95:
+                    continue
+                dist = _min_distance_between(mb, other)
+                if dist < TOL_PARALLEL_MIN or dist > TOL_PARALLEL_MAX:
+                    continue
+                if dist < best_dist:
+                    best_dist = dist
+                    best_h = other["beam_height"]
+                    best_w = other.get("beam_width")
+
+            if best_h is not None:
+                mb["beam_height"] = best_h
+                mb.setdefault("annotations", []).append(f"平行推断H={best_h}")
+            if best_w is not None and (mb.get("beam_width") is None or mb["beam_width"] <= 0):
+                mb["beam_width"] = best_w
+                mb.setdefault("annotations", []).append(f"平行推断W={best_w}")
 
 
 def _distance_to_bbox_or_position(point: tuple, item: dict) -> float:
