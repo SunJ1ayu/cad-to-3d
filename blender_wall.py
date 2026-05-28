@@ -306,7 +306,7 @@ def create_wall_box(s, e, thickness, height, name, mat):
 
 
 def create_single_line_beam_box(s, e, thickness, height, name, mat, wall_objects):
-    """把 CAD 单线作为靠墙侧边，向远离最近墙体的一侧生成梁盒。"""
+    """把 CAD 单线作为远侧边，向最近墙体方向生成梁盒。"""
     dx = e[0] - s[0]
     dy = e[1] - s[1]
     ln = math.sqrt(dx**2 + dy**2)
@@ -344,7 +344,7 @@ def create_single_line_beam_box(s, e, thickness, height, name, mat, wall_objects
             line_point = mid
 
         wall_side = (wall_point[0] - line_point[0]) * nx + (wall_point[1] - line_point[1]) * ny
-        side = -1 if wall_side >= 0 else 1
+        side = 1 if wall_side >= 0 else -1
 
     ox = nx * thickness * side
     oy = ny * thickness * side
@@ -461,7 +461,7 @@ def snap_single_line_beam_ends(obj, target_objects, tol=0.02):
 
 
 def snap_single_line_beam_far_side(obj, target_objects, tol=0.02):
-    """单线梁靠墙侧已对齐后，允许远侧边吸到附近窗/墙边。"""
+    """单线梁靠墙侧已对齐后，远侧边找最近墙并贴上。"""
     bpy.context.view_layer.update()
     points = object_xy_coords(obj)
     xs = [p[0] for p in points]
@@ -487,10 +487,18 @@ def snap_single_line_beam_far_side(obj, target_objects, tol=0.02):
             side_scores.append(len(matches))
         anchor_side = side_values[0] if side_scores[0] >= side_scores[1] else side_values[1]
         far_side = side_values[1] if anchor_side == side_values[0] else side_values[0]
+        # 找远侧方向上最近的墙点（不限距离）
         candidates = [
             px for px, py in target_points
-            if min(ys) - tol <= py <= max(ys) + tol and abs(px - far_side) <= tol
+            if min(ys) - tol <= py <= max(ys) + tol
         ]
+        if not candidates:
+            return
+        # 只选远侧方向的墙点
+        if far_side > anchor_side:
+            candidates = [px for px in candidates if px >= far_side - tol]
+        else:
+            candidates = [px for px in candidates if px <= far_side + tol]
         if not candidates:
             return
         target_x = min(candidates, key=lambda px: abs(px - far_side))
@@ -511,8 +519,14 @@ def snap_single_line_beam_far_side(obj, target_objects, tol=0.02):
         far_side = side_values[1] if anchor_side == side_values[0] else side_values[0]
         candidates = [
             py for px, py in target_points
-            if min(xs) - tol <= px <= max(xs) + tol and abs(py - far_side) <= tol
+            if min(xs) - tol <= px <= max(xs) + tol
         ]
+        if not candidates:
+            return
+        if far_side > anchor_side:
+            candidates = [py for py in candidates if py >= far_side - tol]
+        else:
+            candidates = [py for py in candidates if py <= far_side + tol]
         if not candidates:
             return
         target_y = min(candidates, key=lambda py: abs(py - far_side))
