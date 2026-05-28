@@ -2165,6 +2165,24 @@ def main():
         ([w for w in data["walls"] if w.get("demolishable")], mat_model, "可拆墙", 100),
     ]:
         polys = find_closed_polygons(walls)
+        # 移除与更大围合重叠的小围合（柱内碎面/分割面）
+        # 规则：bbox 重叠面积超过小围合 50% → 移除小围合
+        polys_info = [(p, polygon_area(p), polygon_bbox(p)) for p in polys]
+        polys_info.sort(key=lambda x: -x[1])  # 面积从大到小
+        filtered = []
+        for i, (poly, area_i, bbox_i) in enumerate(polys_info):
+            dominated = False
+            for j, (_, area_j, bbox_j) in enumerate(polys_info):
+                if i == j or area_j <= area_i:
+                    continue
+                overlap_x = max(0, min(bbox_i[2], bbox_j[2]) - max(bbox_i[0], bbox_j[0]))
+                overlap_y = max(0, min(bbox_i[3], bbox_j[3]) - max(bbox_i[1], bbox_j[1]))
+                if overlap_x * overlap_y > area_i * 0.5:
+                    dominated = True
+                    break
+            if not dominated:
+                filtered.append(poly)
+        polys = filtered
         covered_keys = set()
         for poly in polys:
             covered_keys.update(polygon_line_keys(poly))
