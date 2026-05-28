@@ -240,31 +240,15 @@ def parse_dxf(filepath: str) -> dict:
         })
 
     for pts, source in beam_polylines:
-        if len(pts) == 2:
-            # 2点 polyline 就是直线段，当 LINE 处理
-            s, end = pts
-            length = math.sqrt((s[0] - end[0])**2 + (s[1] - end[1])**2)
-            result["beams"].append({
-                "type": "beam",
-                "layer": "BS-梁",
-                "source": source,
-                "start": [round(s[0], 1), round(s[1], 1)],
-                "end": [round(end[0], 1), round(end[1], 1)],
-                "length": round(length, 1),
-                "beam_height": None,
-                "beam_width": None,
-                "annotations": [],
-            })
-        else:
-            result["beams"].append({
-                "type": "beam",
-                "layer": "BS-梁",
-                "source": source,
-                "polyline": [(round(p[0], 1), round(p[1], 1)) for p in pts],
-                "beam_height": None,
-                "beam_width": None,
-                "annotations": [],
-            })
+        result["beams"].append({
+            "type": "beam",
+            "layer": "BS-梁",
+            "source": source,
+            "polyline": [(round(p[0], 1), round(p[1], 1)) for p in pts],
+            "beam_height": None,
+            "beam_width": None,
+            "annotations": [],
+        })
 
     # ============================================================
     # 6. 半高隔断 (DS-半高隔断)
